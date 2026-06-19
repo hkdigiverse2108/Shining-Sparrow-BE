@@ -127,10 +127,10 @@ export const get_workshop_by_id = async (req, res) => {
 
         const response = await findOneAndPopulate(workshopModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, { lean: true }, populateModels)
         if (!response || response.isDeleted) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("workshop"), {}, {}))
-        
+
         const totalLesson = await countData(workshopCurriculumModel, { workshopId: response._id, isDeleted: false });
         response.totalLesson = totalLesson;
-        
+
         response.isUnlocked = false
         if (user && user?._id) {
             let isExist = await userModel.findOne({ _id: new ObjectId(user._id), workshopIds: { $in: [new ObjectId(value.id)] }, isDeleted: false }).lean()
@@ -191,7 +191,7 @@ export const get_my_workshops = async (req, res) => {
         }
 
         let workshops = await getData(workshopModel, { isDeleted: false }, {}, {})
-        criteria.courseId = { $in: workshops.map(e => new ObjectId(e._id)) }
+        criteria.workshopId = { $in: workshops.map(e => new ObjectId(e._id)) }
 
         options.sort = { createdAt: -1 }
         if (page && limit) {
@@ -211,7 +211,12 @@ export const get_my_workshops = async (req, res) => {
             limit: parseInt(limit) || totalCount,
             page_limit: Math.ceil(totalCount / (parseInt(limit) || totalCount)) || 1,
         }
-        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('my workshops'), { my_workshops_data: response, totalData: totalCount, state: stateObj }, {}))
+        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('my workshops'), {
+            my_workshops_data: response,
+            purchased_workshop_data: response,
+            totalData: totalCount,
+            state: stateObj
+        }, {}))
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))

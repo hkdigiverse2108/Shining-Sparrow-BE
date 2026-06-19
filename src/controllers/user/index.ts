@@ -1,6 +1,6 @@
 import { apiResponse, generateHash, generateToken, getUniqueOtr, USER_ROLES } from "../../common";
 import { userAccountDeletionModel, userModel } from "../../database";
-import { countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
+import { countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData, send_otr_mail } from "../../helper";
 import { addUserSchema, editUserSchema, deleteUserSchema, getUserSchema } from "../../validation";
 import bcryptjs from 'bcryptjs'
 
@@ -49,6 +49,12 @@ export const user_signup = async (req, res) => {
 
         const response = await createData(userModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
+
+        try {
+            await send_otr_mail(response, value.otr);
+        } catch (mailError) {
+            console.log("Error sending OTR welcome email:", mailError);
+        }
 
         const token = await generateToken({
             _id: response._id,

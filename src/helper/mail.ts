@@ -76,6 +76,63 @@ export const email_verification_mail = async (user: any, otp: any) => {
     });
 }
 
+export const send_otr_mail = async (user: any, otr: any) => {
+    return new Promise(async (resolve, reject) => {
+        try {
+            const mailOptions = {
+                from: mail,
+                to: user.email,
+                subject: "Welcome to Shining Sparrow - Your OTR Code",
+                html: `
+                <html lang="en-US">
+                <head>
+                    <meta charset="utf-8" />
+                    <title>Shining Sparrow - Registration Details</title>
+                </head>
+                <body style="margin:0; padding:20px; background:#f7f7f7; font-family:Arial, sans-serif;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                        <tr>
+                            <td>
+                                <p style="font-size:16px; color:#333; margin:0;">
+                                    Hi ${user.fullName || 'Learner'},
+                                </p>
+
+                                <p style="font-size:15px; color:#555; line-height:24px;">
+                                    Thank you for registering at <strong>Shining Sparrow</strong>.<br><br>
+                                    Your registration has been successfully completed. Please use the following credentials to log in to the Student Panel:<br><br>
+                                    <strong>Phone Number:</strong> ${user.phoneNumber}<br>
+                                    <strong>OTR (One Time Registration) Code:</strong> <span style="font-size:20px; font-weight:bold; color:#1a73e8;">${otr}</span><br><br>
+                                    Please keep this OTR code safe. You will need it every time you log in to the platform.
+                                </p>
+
+                                <p style="font-size:15px; color:#333; margin-top:30px;">
+                                    Warm Regards,<br>
+                                    <strong>Team Shining Sparrow</strong><br>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>
+                `,
+            };
+
+            await transPorter.sendMail(mailOptions, function (err, data) {
+                if (err) {
+                    console.log(err);
+                    reject(err);
+                } else {
+                    resolve(`Email has been sent to ${user.email}`);
+                }
+            });
+
+        } catch (error) {
+            console.log(error);
+            reject(error);
+        }
+    });
+}
+
 export const send_newsletter = async (email: string, subject: string, htmlMessage: string) => {
     return new Promise(async (resolve, reject) => {
         try {

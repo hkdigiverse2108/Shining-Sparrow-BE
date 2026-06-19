@@ -35,11 +35,19 @@ export const signUp = async (req, res) => {
         payload.role = USER_ROLES.ADMIN
 
         let otp = await getUniqueOtp()
+        const otpExpireTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
         payload.otp = otp;
+        payload.otpExpireTime = otpExpireTime;
         payload.isEmailVerified = false
 
         let response = await createData(userModel, payload);
+
+        try {
+            await email_verification_mail(response, otp);
+        } catch (mailError) {
+            console.log("Error sending verification email:", mailError);
+        }
 
         response = {
             userType: response?.userType,

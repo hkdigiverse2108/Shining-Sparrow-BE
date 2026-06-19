@@ -222,7 +222,7 @@ export const get_my_courses = async (req, res) => {
         let courses = await getData(courseModel, { isDeleted: false }, {}, {})
         criteria.courseId = { $in: courses.map(e => new ObjectId(e._id)) }
 
-        options.sort = { createdAt: -1 }    
+        options.sort = { createdAt: -1 }
         if (page && limit) {
             options.skip = (parseInt(page) - 1) * parseInt(limit)
             options.limit = parseInt(limit)
@@ -254,6 +254,7 @@ export const get_my_courses = async (req, res) => {
 
         return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('my courses'), {
             my_courses_data: newResponse,
+            purchased_course_data: newResponse,
             totalData: totalCount,
             state: stateObj
         }, {}))
