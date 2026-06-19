@@ -1,9 +1,21 @@
 import Joi from "joi";
 import { FAQ_STATUS } from "../common";
 
+const questionSchema = Joi.object().keys({
+    en: Joi.string().required(),
+    hi: Joi.string().allow('', null).optional(),
+    gu: Joi.string().allow('', null).optional(),
+})
+
+const answerSchema = Joi.object().keys({
+    en: Joi.string().required(),
+    hi: Joi.string().allow('', null).optional(),
+    gu: Joi.string().allow('', null).optional(),
+})
+
 export const addFaqSchema = Joi.object().keys({
-    question: Joi.string().required(),
-    answer: Joi.string().required(),
+    question: questionSchema.required(),
+    answer: answerSchema.required(),
     learningCatalogId: Joi.string().optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(FAQ_STATUS)),
@@ -11,8 +23,8 @@ export const addFaqSchema = Joi.object().keys({
 
 export const editFaqSchema = Joi.object().keys({
     faqId: Joi.string().required(),
-    question: Joi.string().required(),
-    answer: Joi.string().required(),
+    question: questionSchema.optional(),
+    answer: answerSchema.optional(),
     learningCatalogId: Joi.string().optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(FAQ_STATUS)).optional(),
@@ -25,4 +37,3 @@ export const deleteFaqSchema = Joi.object().keys({
 export const getFaqSchema = Joi.object().keys({
     id: Joi.string().required(),
 })
-

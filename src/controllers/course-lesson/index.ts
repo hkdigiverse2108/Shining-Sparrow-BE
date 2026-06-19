@@ -1,9 +1,116 @@
-import { apiResponse } from "../../common";
-import { courseLessonModel } from "../../database";
-import { countData, createData, findAllWithPopulate, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
+import { apiResponse, USER_ROLES } from "../../common";
+import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userExamAttemptModel, userModel } from "../../database";
+import { countData, createData, findAllWithPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseLessonSchema, editCourseLessonSchema, deleteCourseLessonSchema, getCourseLessonSchema } from "../../validation";
 
 const ObjectId = require('mongoose').Types.ObjectId;
+
+/**
+ * Helper: compute isUnlocked for each lesson in a sorted array.
+ * Lesson unlock logic:
+ *   - First lesson (lowest priority) → always unlocked
+ *   - For subsequent lessons: check if previous lesson's exam was passed
+ *   - If previous lesson has no exam → next lesson is unlocked
+ */
+export const computeLessonUnlockStatus = async (lessons: any[], userId: string | null, courseCurriculumIds?: any[]) => {
+    if (!userId || lessons.length === 0) {
+        return lessons.map((lesson, index) => ({
+            ...lesson,
+            isUnlocked: index === 0,
+        }))
+    }
+
+    // Sort by course index (if merged course) then by priority ascending
+    const courseOrder = courseCurriculumIds || []
+    const sorted = [...lessons].sort((a, b) => {
+        if (courseOrder.length > 0) {
+            const indexA = courseOrder.findIndex(id => id.toString() === a.courseId?.toString())
+            const indexB = courseOrder.findIndex(id => id.toString() === b.courseId?.toString())
+            if (indexA !== indexB) {
+                return indexA - indexB
+            }
+        }
+        return (a.priority || 0) - (b.priority || 0)
+    })
+
+    // Get all exams for these lessons in one query
+    const lessonIds = sorted.map(l => l._id)
+    const exams = await getData(examModel, {
+        courseLessonId: { $in: lessonIds },
+        isDeleted: false,
+    }, {}, {})
+
+    // Get all attempts by this user for these exams
+    const examIds = exams.map(e => e._id)
+    const attempts = examIds.length > 0
+        ? await getData(userExamAttemptModel, {
+            userId: new ObjectId(userId),
+            examId: { $in: examIds },
+            isCompleted: true,
+        }, {}, {})
+        : []
+
+    // Build maps for quick lookup
+    const examByLessonId = new Map()
+    for (const exam of exams) {
+        examByLessonId.set(exam.courseLessonId.toString(), exam)
+    }
+
+    const attemptByExamId = new Map()
+    for (const attempt of attempts) {
+        attemptByExamId.set(attempt.examId.toString(), attempt)
+    }
+
+    const result: any[] = []
+    for (let i = 0; i < sorted.length; i++) {
+        const lesson = sorted[i]
+        let isUnlocked = false
+
+        if (i === 0) {
+            // First lesson always unlocked
+            isUnlocked = true
+        } else {
+            // Check previous lesson's exam
+            const prevLesson = sorted[i - 1]
+            const prevExam = examByLessonId.get(prevLesson._id.toString())
+            if (!prevExam) {
+                // No exam for previous lesson → this lesson is unlocked
+                isUnlocked = true
+            } else {
+                const prevAttempt = attemptByExamId.get(prevExam._id.toString())
+                isUnlocked = prevAttempt?.status === 'pass'
+            }
+        }
+
+        const currentExam = examByLessonId.get(lesson._id.toString())
+        const examId = currentExam ? currentExam._id : null
+        result.push({ ...lesson, isUnlocked, examId })
+    }
+
+    return result
+}
+
+export const getLessonIdsForCourse = async (courseId: any): Promise<any[]> => {
+    const course = await courseModel.findOne({ _id: new ObjectId(courseId), isDeleted: false }).lean();
+    if (!course) return [];
+
+    if (course.courseCurriculumIds && course.courseCurriculumIds.length > 0) {
+        let allLessonIds: any[] = [];
+        for (const subCourseId of course.courseCurriculumIds) {
+            const subLessonIds = await getLessonIdsForCourse(subCourseId);
+            allLessonIds = allLessonIds.concat(subLessonIds);
+        }
+        return Array.from(new Set(allLessonIds.map(id => id.toString()))).map(id => new ObjectId(id));
+    }
+
+    if (course.courseLessonIds && course.courseLessonIds.length > 0) {
+        return course.courseLessonIds;
+    }
+
+    // Fallback: lessons pointing to courseId
+    const lessons = await courseLessonModel.find({ courseId: new ObjectId(courseId), isDeleted: false }).lean();
+    return lessons.map(l => l._id);
+};
 
 export const add_course_lesson = async (req, res) => {
     reqInfo(req)
@@ -13,6 +120,11 @@ export const add_course_lesson = async (req, res) => {
 
         const response = await createData(courseLessonModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
+
+        if (value.courseId) {
+            await updateData(courseModel, { _id: new ObjectId(value.courseId), isDeleted: false }, { $push: { courseLessonIds: response._id } }, { new: true, timestamps: false })
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("course lesson"), response, {}))
     } catch (error) {
         console.log(error)
@@ -42,6 +154,11 @@ export const delete_course_lesson_by_id = async (req, res) => {
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
         const response = await updateData(courseLessonModel, { _id: new ObjectId(value.id) }, { isDeleted: true }, { new: true })
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+
+        if (response.courseId) {
+            await updateData(courseModel, { _id: response.courseId, isDeleted: false }, { $pull: { courseLessonIds: response._id } }, { new: true, timestamps: false })
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.deleteDataSuccess("course lesson"), response, {}))
     } catch (error) {
         console.log(error)
@@ -61,13 +178,21 @@ export const get_all_course_lessons = async (req, res) => {
                 { subtitle: { $regex: search, $options: 'si' } }
             ]
         }
+        let courseCurriculumIds: any[] = []
         if (courseId) {
-            criteria.courseId = new ObjectId(courseId)
+            const course = await getFirstMatch(courseModel, { _id: new ObjectId(courseId), isDeleted: false }, {}, {})
+            if (course) {
+                const lessonIds = await getLessonIdsForCourse(courseId)
+                criteria._id = { $in: lessonIds }
+                courseCurriculumIds = course.courseCurriculumIds || []
+            } else {
+                criteria.courseId = new ObjectId(courseId)
+            }
         }
         if (startDate && endDate) {
             criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
         }
-        options.sort = { createdAt: -1 }
+        options.sort = { priority: 1, createdAt: -1 }
         if (page && limit) {
             options.skip = (parseInt(page) - 1) * parseInt(limit)
             options.limit = parseInt(limit)
@@ -76,15 +201,20 @@ export const get_all_course_lessons = async (req, res) => {
         const populateModel = { path: 'courseId', select: 'name description' };
         const response = await findAllWithPopulate(courseLessonModel, criteria, {}, options, populateModel)
         const totalCount = await countData(courseLessonModel, criteria)
+
+        // Compute unlock status for each lesson
+        const userId = req.headers.user?._id || null
+        const lessonsWithUnlock = await computeLessonUnlockStatus(response, userId, courseCurriculumIds)
+
         const stateObj = {
             page: parseInt(page) || 1,
             limit: parseInt(limit) || totalCount,
             page_limit: Math.ceil(totalCount / (parseInt(limit) || totalCount)) || 1,
         }
-        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('course lessons'), { 
-            course_lesson_data: response, 
-            totalData: totalCount, 
-            state: stateObj 
+        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('course lessons'), {
+            course_lesson_data: lessonsWithUnlock,
+            totalData: totalCount,
+            state: stateObj
         }, {}))
     } catch (error) {
         console.log(error)
@@ -97,17 +227,66 @@ export const get_course_lesson_by_id = async (req, res) => {
     try {
         const { error, value } = getCourseLessonSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
+
         const populateModel = { path: 'courseId', select: 'name description' };
         const response = await getFirstMatch(courseLessonModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
-        if (response) {
-            const populatedResponse = await courseLessonModel.findById(value.id).populate(populateModel).lean()
-            if (!populatedResponse) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
-            return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course lesson"), populatedResponse, {}))
+        if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+
+        // Check if this lesson is locked for the user, and verify access permissions
+        const userId = req.headers.user?._id || null
+        const userRole = req.headers.user?.role || null
+        if (userId && userRole !== USER_ROLES.ADMIN && response.courseId) {
+            const user = await getFirstMatch(userModel, { _id: new ObjectId(userId), isDeleted: false }, {}, {})
+            if (!user) return res.status(401).json(new apiResponse(401, "User not found", {}, {}))
+
+            const purchasedCourseIds = (user.courseIds || []).map(id => id.toString())
+
+            // Find which purchased courses actually contain this lesson
+            const matchingCourses: any[] = [];
+            for (const pCourseId of purchasedCourseIds) {
+                const lessonIds = await getLessonIdsForCourse(pCourseId);
+                if (lessonIds.some(id => id.toString() === value.id)) {
+                    matchingCourses.push(pCourseId);
+                }
+            }
+
+            if (matchingCourses.length === 0) {
+                return res.status(403).json(new apiResponse(403, "You have not purchased this course.", {}, {}))
+            }
+
+            // Check if the lesson is unlocked in at least one of the matching purchased courses
+            let isUnlockedInAny = false;
+            for (const mCourseId of matchingCourses) {
+                const mCourse = await getFirstMatch(courseModel, { _id: new ObjectId(mCourseId), isDeleted: false }, {}, {});
+                const courseCurriculumIds = mCourse?.courseCurriculumIds || [];
+                const lessonIds = await getLessonIdsForCourse(mCourseId);
+                const allLessons = await getData(courseLessonModel, {
+                    _id: { $in: lessonIds },
+                    isDeleted: false,
+                }, {}, { lean: true });
+
+                const lessonsWithUnlock = await computeLessonUnlockStatus(allLessons, userId, courseCurriculumIds);
+                const thisLesson = lessonsWithUnlock.find(l => l._id.toString() === value.id);
+                if (thisLesson && thisLesson.isUnlocked) {
+                    isUnlockedInAny = true;
+                    break;
+                }
+            }
+
+            if (!isUnlockedInAny) {
+                return res.status(403).json(new apiResponse(403, "This lesson is locked. Please complete the previous lesson's exam first.", {}, {}))
+            }
         }
-        return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+
+        const populatedResponse = await courseLessonModel.findById(value.id).populate(populateModel).lean()
+        if (!populatedResponse) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+
+        const exam = await getFirstMatch(examModel, { courseLessonId: new ObjectId(value.id), isDeleted: false }, {}, {});
+        populatedResponse.examId = exam ? exam._id : null;
+
+        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course lesson"), populatedResponse, {}))
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
     }
 }
-

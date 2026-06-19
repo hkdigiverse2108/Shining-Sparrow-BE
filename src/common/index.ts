@@ -47,6 +47,21 @@ export const getUniqueOtp = async () => {
     return otp;
 };
 
+export const getUniqueOtr = async () => {
+    let otr;
+    let isUnique = false;
+
+    while (!isUnique) {
+        otr = Math.floor(10000000 + Math.random() * 90000000).toString();
+        const isAlreadyAssign = await getFirstMatch(userModel, { otr }, {}, {});
+        if (!isAlreadyAssign) {
+            isUnique = true;
+        }
+    }
+
+    return otr;
+};
+
 export const generateHash = async (password = '') => {
     const salt = await bcryptjs.genSaltSync(10)
     const hashPassword = await bcryptjs.hash(password, salt)

@@ -4,7 +4,7 @@ import { Request, Response } from 'express'
 import { userModel, userAccountDeletionModel } from '../../database'
 import { apiResponse, generateHash, generateToken, getUniqueOtp, USER_ROLES } from '../../common'
 import { createData, email_verification_mail, getFirstMatch, reqInfo, responseMessage, updateData } from '../../helper'
-import { forgotPasswordSchema, otpVerifySchema, resetPasswordSchema, signUpSchema, changePasswordSchema, updateProfileSchema, deleteUserAccountSchema, resendOTPSchema } from '../../validation'
+import { forgotPasswordSchema, otpVerifySchema, resetPasswordSchema, signUpSchema, loginSchema, changePasswordSchema, updateProfileSchema, deleteUserAccountSchema, resendOTPSchema } from '../../validation'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -101,13 +101,25 @@ export const login = async (req: Request, res: Response) => { //email or passwor
     reqInfo(req)
     let body = req.body, response: any
     try {
-        response = await getFirstMatch(userModel, { email: body?.email, isDeleted: false }, {}, {})
+        const { error, value } = loginSchema.validate(body)
+        if (error) {
+            return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}));
+        }
 
-        if (!response) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))
-        if (response?.isBlocked == true) return res.status(403).json(new apiResponse(403, responseMessage?.accountBlock, {}, {}))
+        if (value.userType === USER_ROLES.ADMIN) {
+            // Admin login flow
+            response = await getFirstMatch(userModel, { email: value.email, role: USER_ROLES.ADMIN, isDeleted: false }, {}, {})
+            if (!response) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))
+            if (response?.isBlocked == true) return res.status(403).json(new apiResponse(403, responseMessage?.accountBlock, {}, {}))
 
-        const passwordMatch = await bcryptjs.compare(body.password, response.password)
-        if (!passwordMatch) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))
+            const passwordMatch = await bcryptjs.compare(value.password, response.password)
+            if (!passwordMatch) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))
+        } else {
+            // User login flow (Phone + OTR)
+            response = await getFirstMatch(userModel, { phoneNumber: value.phoneNumber, otr: value.otr, role: USER_ROLES.USER, isDeleted: false }, {}, {})
+            if (!response) return res.status(400).json(new apiResponse(400, "Invalid Phone Number or OTR", {}, {}))
+            if (response?.isBlocked == true) return res.status(403).json(new apiResponse(403, responseMessage?.accountBlock, {}, {}))
+        }
 
         const token = await generateToken({
             _id: response._id,
@@ -115,15 +127,17 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             generatedOn: (new Date().getTime())
         }, { expiresIn: '24h' })
 
-        response = {
+        const result = {
             isEmailVerified: response?.isEmailVerified,
             role: response?.role,
             _id: response?._id,
             email: response?.email,
+            phoneNumber: response?.phoneNumber,
+            otr: response?.otr,
             fullName: response?.fullName,
             token,
         }
-        return res.status(200).json(new apiResponse(200, responseMessage?.loginSuccess, response, {}))
+        return res.status(200).json(new apiResponse(200, responseMessage?.loginSuccess, result, {}))
 
     } catch (error) {
         console.log(error)

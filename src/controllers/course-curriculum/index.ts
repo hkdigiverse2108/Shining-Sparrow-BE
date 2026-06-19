@@ -1,6 +1,6 @@
 import { apiResponse } from "../../common";
-import { courseCurriculumModel } from "../../database";
-import { countData, createData, reqInfo, responseMessage, updateData } from "../../helper";
+import { courseCurriculumModel, examModel, userExamAttemptModel } from "../../database";
+import { countData, createData, getData, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseCurriculumSchema, editCourseCurriculumSchema, deleteCourseCurriculumSchema, getCourseCurriculumSchema } from "../../validation";
 
 const ObjectId = require('mongoose').Types.ObjectId;
@@ -90,16 +90,62 @@ export const get_all_course_curriculums = async (req, res) => {
 
         const populateModel = [
             { path: 'courseId', select: 'name description' },
-            { path: 'courseLessonsAssigned', select: 'title subtitle priority lessonLock' }
+            { path: 'courseLessonsAssigned', select: 'title subtitle priority practiceMaterial lessonLock' }
         ];
         const response = await courseCurriculumModel.find(criteria, {}, options).populate(populateModel).lean()
         const totalCount = await countData(courseCurriculumModel, criteria)
+
+        // Compute lesson unlock status for each curriculum's lessons
+        const userId = req.headers.user?._id || null
+        let enrichedResponse = response
+
+        if (userId) {
+            enrichedResponse = []
+            for (const curriculum of response) {
+                if (curriculum.courseLessonsAssigned && curriculum.courseLessonsAssigned.length > 0) {
+                    const lessons = [...curriculum.courseLessonsAssigned].sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0))
+                    const lessonIds = lessons.map((l: any) => l._id)
+
+                    const exams = await getData(examModel, { courseLessonId: { $in: lessonIds }, isDeleted: false }, {}, {})
+                    const examIds = exams.map(e => e._id)
+                    const attempts = examIds.length > 0
+                        ? await getData(userExamAttemptModel, { userId: new ObjectId(userId), examId: { $in: examIds }, isCompleted: true }, {}, {})
+                        : []
+
+                    const examByLessonId = new Map()
+                    for (const exam of exams) examByLessonId.set(exam.courseLessonId.toString(), exam)
+                    const attemptByExamId = new Map()
+                    for (const attempt of attempts) attemptByExamId.set(attempt.examId.toString(), attempt)
+
+                    const lessonsWithUnlock = lessons.map((lesson: any, i: number) => {
+                        let isUnlocked = false
+                        if (i === 0) {
+                            isUnlocked = true
+                        } else {
+                            const prevExam = examByLessonId.get(lessons[i - 1]._id.toString())
+                            if (!prevExam) {
+                                isUnlocked = true
+                            } else {
+                                const prevAttempt = attemptByExamId.get(prevExam._id.toString())
+                                isUnlocked = prevAttempt?.status === 'pass'
+                            }
+                        }
+                        return { ...lesson, isUnlocked }
+                    })
+
+                    enrichedResponse.push({ ...curriculum, courseLessonsAssigned: lessonsWithUnlock })
+                } else {
+                    enrichedResponse.push(curriculum)
+                }
+            }
+        }
+
         const stateObj = {
             page: parseInt(page) || 1,
             limit: parseInt(limit) || totalCount,
             page_limit: Math.ceil(totalCount / (parseInt(limit) || totalCount)) || 1,
         }
-        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('course curriculums'), { course_curriculum_data: response, totalData: totalCount, state: stateObj }, {}))
+        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('course curriculums'), { course_curriculum_data: enrichedResponse, totalData: totalCount, state: stateObj }, {}))
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
@@ -114,10 +160,45 @@ export const get_course_curriculum_by_id = async (req, res) => {
         const populateModel = [
             { path: 'courseId', select: 'name description' },
             { path: 'courseLessonId', select: 'title subtitle' },
-            { path: 'courseLessonsAssigned', select: 'title subtitle priority' }
+            { path: 'courseLessonsAssigned', select: 'title subtitle priority practiceMaterial' }
         ];
-        const response = await courseCurriculumModel.findById(value.id).populate(populateModel).lean()
+        const response: any = await courseCurriculumModel.findById(value.id).populate(populateModel).lean()
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course curriculum"), {}, {}))
+
+        // Compute lesson unlock status
+        const userId = req.headers.user?._id || null
+        if (userId && response.courseLessonsAssigned && response.courseLessonsAssigned.length > 0) {
+            const lessons = [...response.courseLessonsAssigned].sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0))
+            const lessonIds = lessons.map((l: any) => l._id)
+
+            const exams = await getData(examModel, { courseLessonId: { $in: lessonIds }, isDeleted: false }, {}, {})
+            const examIds = exams.map(e => e._id)
+            const attempts = examIds.length > 0
+                ? await getData(userExamAttemptModel, { userId: new ObjectId(userId), examId: { $in: examIds }, isCompleted: true }, {}, {})
+                : []
+
+            const examByLessonId = new Map()
+            for (const exam of exams) examByLessonId.set(exam.courseLessonId.toString(), exam)
+            const attemptByExamId = new Map()
+            for (const attempt of attempts) attemptByExamId.set(attempt.examId.toString(), attempt)
+
+            response.courseLessonsAssigned = lessons.map((lesson: any, i: number) => {
+                let isUnlocked = false
+                if (i === 0) {
+                    isUnlocked = true
+                } else {
+                    const prevExam = examByLessonId.get(lessons[i - 1]._id.toString())
+                    if (!prevExam) {
+                        isUnlocked = true
+                    } else {
+                        const prevAttempt = attemptByExamId.get(prevExam._id.toString())
+                        isUnlocked = prevAttempt?.status === 'pass'
+                    }
+                }
+                return { ...lesson, isUnlocked }
+            })
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course curriculum"), response, {}))
     } catch (error) {
         console.log(error)

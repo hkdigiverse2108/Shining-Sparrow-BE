@@ -2,7 +2,6 @@ import express from 'express'
 import { blogRoute } from './blog'
 import { authRouter } from './auth'
 import { userRoute } from './user'
-import { courseCategoryRoute } from './course-category'
 import { courseRoute } from './course'
 import { settingsRoute } from './settings'
 import { heroBannerRoute } from './hero-banner'
@@ -23,13 +22,14 @@ import { referralCodeRoute } from './referral-code'
 import { uploadRoute } from './upload'
 import { aboutUsRouter } from './about-us'
 import { dashboardRoute } from './dashboard'
+import { questionRoute } from './question'
+import { examRoute } from './exam'
 
 const router = express.Router()
 
 router.use('/auth', authRouter)
 router.use('/user', userRoute)
 router.use('/blog', blogRoute)
-router.use('/course-category', courseCategoryRoute)
 router.use('/course', courseRoute)
 router.use('/settings', settingsRoute)
 router.use('/hero-banner', heroBannerRoute)
@@ -50,5 +50,7 @@ router.use('/referral-code', referralCodeRoute)
 router.use('/upload', uploadRoute)
 router.use('/about-us', aboutUsRouter)
 router.use('/dashboard', dashboardRoute)
+router.use('/question', questionRoute)
+router.use('/exam', examRoute)
 
 export { router }

@@ -1,4 +1,5 @@
 import Joi from "joi";
+import { USER_ROLES } from "../common";
 
 export const signUpSchema = Joi.object().keys({
     fullName: Joi.string().required(),
@@ -6,13 +7,30 @@ export const signUpSchema = Joi.object().keys({
     password: Joi.string().required(),
     phone: Joi.string().optional(),
     designation: Joi.string().optional(),
-    referralCode: Joi.string().optional(),
-    agreeTerms: Joi.boolean().default(false),
 });
 
 export const loginSchema = Joi.object().keys({
-    email: Joi.string().email().required(),
-    password: Joi.string().required(),
+    userType: Joi.string().valid(USER_ROLES.ADMIN, USER_ROLES.USER).default(USER_ROLES.USER),
+    email: Joi.string().email().when('userType', {
+        is: USER_ROLES.ADMIN,
+        then: Joi.required(),
+        otherwise: Joi.forbidden()
+    }),
+    password: Joi.string().when('userType', {
+        is: USER_ROLES.ADMIN,
+        then: Joi.required(),
+        otherwise: Joi.forbidden()
+    }),
+    phoneNumber: Joi.string().when('userType', {
+        is: USER_ROLES.USER,
+        then: Joi.required(),
+        otherwise: Joi.forbidden()
+    }),
+    otr: Joi.string().pattern(/^\d{8}$/).when('userType', {
+        is: USER_ROLES.USER,
+        then: Joi.required(),
+        otherwise: Joi.forbidden()
+    }),
 });
 
 export const resetPasswordSchema = Joi.object().keys({
@@ -44,6 +62,9 @@ export const updateProfileSchema = Joi.object().keys({
     phone: Joi.string().optional(),
     designation: Joi.string().optional(),
     profilePhoto: Joi.string().allow('', null).optional(),
+    district: Joi.string().allow('', null).optional(),
+    std: Joi.string().allow('', null).optional(),
+    reachFrom: Joi.string().allow('', null).optional(),
 });
 
 export const deleteUserAccountSchema = Joi.object().keys({

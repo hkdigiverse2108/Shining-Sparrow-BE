@@ -3,6 +3,7 @@ import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, u
 import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseSchema, editCourseSchema, deleteCourseSchema, getCourseSchema, purchaseCourseSchema } from "../../validation";
 import Razorpay from "razorpay";
+import { computeLessonUnlockStatus } from "../course-lesson";
 
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -50,11 +51,52 @@ export const delete_course_by_id = async (req, res) => {
     }
 }
 
+const enrichCourseDetails = async (course: any, userId: string | null) => {
+    if (course.courseCurriculumIds && course.courseCurriculumIds.length > 0 && course.courseCurriculumIds[0] && typeof course.courseCurriculumIds[0] === 'object') {
+        let allLessons: any[] = [];
+        const subCourses = course.courseCurriculumIds.filter((sc: any) => sc && sc._id && !sc.isDeleted);
+        const mappedCurriculums: any[] = [];
+
+        for (const subCourse of subCourses) {
+            const lessons = await courseLessonModel.find({ courseId: subCourse._id, isDeleted: false }).sort({ priority: 1 }).lean();
+            mappedCurriculums.push({
+                _id: subCourse._id,
+                title: subCourse.name,
+                description: subCourse.description,
+                image: subCourse.image,
+                pdf: subCourse.pdf,
+                price: subCourse.price,
+                courseLessonsAssigned: lessons
+            });
+            allLessons = allLessons.concat(lessons);
+        }
+
+        const enrichedLessons = await computeLessonUnlockStatus(allLessons, userId, subCourses.map((sc: any) => sc._id));
+        const lessonMap = new Map();
+        for (const el of enrichedLessons) {
+            lessonMap.set(el._id.toString(), el);
+        }
+
+        for (const mc of mappedCurriculums) {
+            mc.courseLessonsAssigned = mc.courseLessonsAssigned.map(l => lessonMap.get(l._id.toString()));
+        }
+
+        course.courseCurriculumIds = mappedCurriculums;
+        course.totalLesson = enrichedLessons.length;
+    } else {
+        const lessons = await courseLessonModel.find({ courseId: course._id, isDeleted: false }).sort({ priority: 1 }).lean();
+        const lessonsWithUnlock = await computeLessonUnlockStatus(lessons, userId);
+        course.courseLessonIds = lessonsWithUnlock;
+        course.totalLesson = lessons.length;
+    }
+    return course;
+};
+
 export const get_all_course = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate, courseCategoryId } = req.query
+        const { page, limit, search, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         if (search) {
@@ -62,9 +104,6 @@ export const get_all_course = async (req, res) => {
                 { name: { $regex: search, $options: 'si' } },
                 { description: { $regex: search, $options: 'si' } }
             ]
-        }
-        if (courseCategoryId) {
-            criteria.courseCategoryId = new ObjectId(courseCategoryId)
         }
         if (startDate && endDate) {
             criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
@@ -76,7 +115,6 @@ export const get_all_course = async (req, res) => {
         }
 
         const populateModel = [
-            { path: 'courseCategoryId', select: 'name description' },
             { path: 'courseCurriculumIds' }
         ];
         const response = await findAllWithPopulate(courseModel, criteria, {}, options, populateModel)
@@ -87,12 +125,12 @@ export const get_all_course = async (req, res) => {
         );
 
         let newResponse: any[] = [];
+        const userId = user?._id ? user._id.toString() : null;
 
         for (let course of response) {
-            const totalLesson = await countData(courseCurriculumModel, { courseId: course._id, isDeleted: false });
+            const enriched = await enrichCourseDetails(course, userId);
             newResponse.push({
-                ...course,
-                totalLesson,
+                ...enriched,
                 isUnlocked: unlockedSet.has(course?._id.toString()),
             });
         }
@@ -119,22 +157,20 @@ export const get_course_by_id = async (req, res) => {
     try {
         const { error, value } = getCourseSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
-        const populateModel = [
-            { path: 'courseCategoryId', select: 'name description' }
-        ];
 
-        const response = await findOneAndPopulate(courseModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, { lean: true }, populateModel)
+        const populateModel = [{ path: 'courseCurriculumIds' }];
+        const response = await findOneAndPopulate(courseModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {}, populateModel);
         if (!response || response.isDeleted) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course"), {}, {}))
-        
-        const totalLesson = await countData(courseCurriculumModel, { courseId: response._id, isDeleted: false });
-        response.totalLesson = totalLesson;
-        
-        response.isUnlocked = false
+
+        const userId = user && user?._id ? user._id.toString() : null;
+        const enriched = await enrichCourseDetails(response, userId);
+
+        enriched.isUnlocked = false
         if (user && user?._id) {
             let isExist = await getFirstMatch(userModel, { _id: new ObjectId(user._id), courseIds: { $in: [new ObjectId(value.id)] }, isDeleted: false }, {}, {})
-            if (isExist) response.isUnlocked = true
+            if (isExist) enriched.isUnlocked = true
         }
-        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course"), response, {}))
+        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course"), enriched, {}))
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
@@ -186,7 +222,7 @@ export const get_my_courses = async (req, res) => {
         let courses = await getData(courseModel, { isDeleted: false }, {}, {})
         criteria.courseId = { $in: courses.map(e => new ObjectId(e._id)) }
 
-        options.sort = { createdAt: -1 }
+        options.sort = { createdAt: -1 }    
         if (page && limit) {
             options.skip = (parseInt(page) - 1) * parseInt(limit)
             options.limit = parseInt(limit)

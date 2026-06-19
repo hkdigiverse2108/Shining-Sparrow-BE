@@ -57,16 +57,20 @@ export const get_all_faq = async (req, res) => {
 
         if (search) {
             criteria.$or = [
-                { question: { $regex: search, $options: 'si' } },
-                { answer: { $regex: search, $options: 'si' } },
+                { 'question.en': { $regex: search, $options: 'si' } },
+                { 'question.hi': { $regex: search, $options: 'si' } },
+                { 'question.gu': { $regex: search, $options: 'si' } },
+                { 'answer.en': { $regex: search, $options: 'si' } },
+                { 'answer.hi': { $regex: search, $options: 'si' } },
+                { 'answer.gu': { $regex: search, $options: 'si' } },
             ]
         }
-        
+
         if (type) {
             criteria.type = type
         }
 
-        if(learningCatalogFilter){
+        if (learningCatalogFilter) {
             criteria.learningCatalogId = new ObjectId(learningCatalogFilter)
         }
 
@@ -93,10 +97,10 @@ export const get_all_faq = async (req, res) => {
             limit: parseInt(limit) || totalCount,
             page_limit: Math.ceil(totalCount / (parseInt(limit) || totalCount)) || 1,
         }
-        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('faq'), { 
-            faq_data: response, 
-            totalData: totalCount, 
-            state: stateObj 
+        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('faq'), {
+            faq_data: response,
+            totalData: totalCount,
+            state: stateObj
         }, {}))
     } catch (error) {
         console.log(error)

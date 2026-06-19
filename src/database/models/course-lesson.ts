@@ -5,6 +5,7 @@ const courseLessonSchema = new mongoose.Schema({
     title: { type: String },
     subtitle: { type: String },
     priority: { type: Number, default: 0 },
+    practiceMaterial: { type: String, default: null },
     lessonLock: { type: Boolean, default: false },
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },

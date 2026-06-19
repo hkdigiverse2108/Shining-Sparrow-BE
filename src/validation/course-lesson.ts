@@ -5,6 +5,7 @@ export const addCourseLessonSchema = Joi.object().keys({
     title: Joi.string().required(),
     subtitle: Joi.string().allow('', null).optional(),
     priority: Joi.number().optional(),
+    practiceMaterial: Joi.string().allow('', null).optional(),
     lessonLock: Joi.boolean().default(false),
 })
 
@@ -14,6 +15,7 @@ export const editCourseLessonSchema = Joi.object().keys({
     title: Joi.string().optional(),
     priority: Joi.number().optional(),
     subtitle: Joi.string().allow('', null).optional(),
+    practiceMaterial: Joi.string().allow('', null).optional(),
     lessonLock: Joi.boolean().optional(),
 })
 

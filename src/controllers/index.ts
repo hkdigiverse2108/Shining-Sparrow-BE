@@ -1,7 +1,6 @@
 export * as userController from './user'
 export * as authController from "./auth"
 export * as blogController from "./blog"
-export * as courseCategoryController from "./course-category"
 export * as courseController from "./course"
 export * as settingsController from "./settings"
 export * as heroBannerController from "./hero-banner"
@@ -21,3 +20,5 @@ export * as instructorController from "./instructor"
 export * as referralCodeController from "./referral-code"
 export * as aboutUsController from "./about-us"
 export * as dashboardController from "./dashboard"
+export * as questionController from "./question"
+export * as examController from "./exam"

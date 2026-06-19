@@ -1,4 +1,4 @@
-import { apiResponse, generateHash, generateToken, USER_ROLES } from "../../common";
+import { apiResponse, generateHash, generateToken, getUniqueOtr, USER_ROLES } from "../../common";
 import { userAccountDeletionModel, userModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addUserSchema, editUserSchema, deleteUserSchema, getUserSchema } from "../../validation";
@@ -18,12 +18,8 @@ export const add_user = async (req, res) => {
         existingUser = await getFirstMatch(userModel, { phoneNumber: value?.phoneNumber, role: USER_ROLES.USER, isDeleted: false }, {}, {})
         if (existingUser) return res.status(400).json(new apiResponse(400, responseMessage?.dataAlreadyExist("Phone Number"), {}, {}))
 
-        // let otp = await getUniqueOtp()
+        value.otr = await getUniqueOtr()
         value.password = await generateHash(value.password)
-        // value.otp = otp;
-        // value.otpExpireTime = new Date(Date.now() + 2 * 60 * 1000);
-
-        // email_verification_mail(value, otp);
         const response = await createData(userModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
@@ -41,28 +37,28 @@ export const user_signup = async (req, res) => {
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
         let existingUser = await getFirstMatch(userModel, { email: value?.email, role: USER_ROLES.USER, isDeleted: false }, {}, {})
+        if (existingUser) return res.status(400).json(new apiResponse(400, responseMessage?.alreadyEmail, {}, {}))
 
-        if (existingUser) {
-            const passwordMatch = await bcryptjs.compare(value.password, existingUser.password)
-            if (!passwordMatch) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))
+        if (value?.phoneNumber) {
+            let existingPhone = await getFirstMatch(userModel, { phoneNumber: value?.phoneNumber, role: USER_ROLES.USER, isDeleted: false }, {}, {})
+            if (existingPhone) return res.status(400).json(new apiResponse(400, responseMessage?.dataAlreadyExist("Phone Number"), {}, {}))
         }
 
-        if (!existingUser) {
-            if (value.password) value.password = await generateHash(value.password)
+        value.otr = await getUniqueOtr()
+        if (value.password) value.password = await generateHash(value.password)
 
-            existingUser = await createData(userModel, value);
-            if (!existingUser) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
-        }
+        const response = await createData(userModel, value);
+        if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
         const token = await generateToken({
-            _id: existingUser._id,
+            _id: response._id,
             status: "Login",
             generatedOn: (new Date().getTime())
         }, { expiresIn: '24h' })
 
-        let newResponse = { ...existingUser?._doc ? existingUser?._doc : existingUser, token }
+        let newResponse = { ...response?._doc ? response?._doc : response, token }
 
-        return res.status(200).json(new apiResponse(200, "Details Saved successfully", { ...newResponse, token }, {}))
+        return res.status(200).json(new apiResponse(200, "Signup successfully", newResponse, {}))
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))

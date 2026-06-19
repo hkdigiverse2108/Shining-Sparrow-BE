@@ -12,7 +12,11 @@ export const adminJWT = async (req: Request, res: Response, next) => {
     let { authorization } = req.headers, result: any
     if (authorization) {
         try {
-            let isVerifyToken = jwt.verify(authorization, jwt_token_secret)
+            let token = authorization;
+            if (authorization.startsWith("Bearer ")) {
+                token = authorization.split(" ")[1];
+            }
+            let isVerifyToken = jwt.verify(token, jwt_token_secret)
             result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false });
             if (result?.isBlocked == true) return res.status(403).json(new apiResponse(403, 'Your account has been blocked.', {}, {}));
             if (result?.isDeleted == false) {
@@ -35,7 +39,11 @@ export const userJWT = async (req: Request, res: Response, next) => {
     let { authorization } = req.headers, result: any
     if (authorization) {
         try {
-            let isVerifyToken = jwt.verify(authorization, jwt_token_secret)
+            let token = authorization;
+            if (authorization.startsWith("Bearer ")) {
+                token = authorization.split(" ")[1];
+            }
+            let isVerifyToken = jwt.verify(token, jwt_token_secret)
             result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false }).lean()
             if (result?.isBlocked == true) return res.status(410).json(new apiResponse(410, responseMessage?.accountBlock, {}, {}));
             if (result?.isDeleted == false) {

@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const courseSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    courseCategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'course-category' },
-    courseCurriculumIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'course-curriculum' }],
+    courseCurriculumIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'course' }],
+    courseLessonIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'course-lesson' }],
     description: { type: String },
     price: { type: Number, default: 0 },
     mrpPrice: { type: Number, default: 0 },
