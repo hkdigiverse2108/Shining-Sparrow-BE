@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userExamAttemptModel, userModel } from "../../database";
+import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userCourseModel, userExamAttemptModel, userModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseLessonSchema, editCourseLessonSchema, deleteCourseLessonSchema, getCourseLessonSchema } from "../../validation";
 
@@ -252,6 +252,22 @@ export const get_course_lesson_by_id = async (req, res) => {
 
             if (matchingCourses.length === 0) {
                 return res.status(403).json(new apiResponse(403, "You have not purchased this course.", {}, {}))
+            }
+
+            // Check if access has expired for all matching course purchases
+            const now = new Date();
+            const activePurchases = await userCourseModel.find({
+                userId: new ObjectId(userId),
+                courseId: { $in: matchingCourses.map(id => new ObjectId(id)) },
+                isDeleted: false,
+                $or: [
+                    { accessExpiryDate: null },
+                    { accessExpiryDate: { $exists: false } },
+                    { accessExpiryDate: { $gte: now } }
+                ]
+            });
+            if (activePurchases.length === 0) {
+                return res.status(403).json(new apiResponse(403, "Your access to this course has expired. Please renew your purchase.", {}, {}))
             }
 
             // Check if the lesson is unlocked in at least one of the matching purchased courses

@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel } from "../../database";
+import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel } from "../../database";
 import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseSchema, editCourseSchema, deleteCourseSchema, getCourseSchema, purchaseCourseSchema } from "../../validation";
 import Razorpay from "razorpay";
@@ -166,9 +166,30 @@ export const get_course_by_id = async (req, res) => {
         const enriched = await enrichCourseDetails(response, userId);
 
         enriched.isUnlocked = false
+        enriched.isAccessExpired = false
+        enriched.daysRemaining = null
+        enriched.accessExpiryDate = null
         if (user && user?._id) {
             let isExist = await getFirstMatch(userModel, { _id: new ObjectId(user._id), courseIds: { $in: [new ObjectId(value.id)] }, isDeleted: false }, {}, {})
-            if (isExist) enriched.isUnlocked = true
+            if (isExist) {
+                enriched.isUnlocked = true
+                // Check access expiry
+                const userCourseRecord = await getFirstMatch(userCourseModel, {
+                    userId: new ObjectId(user._id),
+                    courseId: new ObjectId(value.id),
+                    isDeleted: false
+                }, {}, {})
+                if (userCourseRecord) {
+                    const now = new Date();
+                    const expiry = userCourseRecord.accessExpiryDate ? new Date(userCourseRecord.accessExpiryDate) : null;
+                    enriched.accessExpiryDate = expiry;
+                    enriched.accessStartDate = userCourseRecord.accessStartDate || userCourseRecord.purchaseDate;
+                    enriched.isAccessExpired = expiry ? expiry < now : false;
+                    enriched.daysRemaining = expiry && expiry >= now
+                        ? Math.ceil((expiry.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+                        : null;
+                }
+            }
         }
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course"), enriched, {}))
     } catch (error) {
@@ -192,12 +213,20 @@ export const purchase_course = async (req, res) => {
         const existingPurchase = await getFirstMatch(userCourseModel, { userId: new ObjectId(userId), courseId: new ObjectId(value.courseId), isDeleted: false }, {}, {})
         if (existingPurchase) return res.status(400).json(new apiResponse(400, "Course already purchased", {}, {}))
 
+        const accessStartDate = new Date();
+        let accessExpiryDate: Date | null = null;
+        if (course.accessDurationDays && course.accessDurationDays > 0) {
+            accessExpiryDate = new Date(accessStartDate.getTime() + course.accessDurationDays * 24 * 60 * 60 * 1000);
+        }
+
         const purchaseData = {
             userId: new ObjectId(userId),
             courseId: new ObjectId(value.courseId),
             paymentStatus: value.razorpayPaymentId ? 'completed' : 'pending',
             razorpayOrderId: value.razorpayOrderId,
             razorpayPaymentId: value.razorpayPaymentId,
+            accessStartDate,
+            accessExpiryDate,
         }
 
         const response = await createData(userCourseModel, purchaseData);
@@ -229,7 +258,7 @@ export const get_my_courses = async (req, res) => {
         }
 
         const populateModel = [
-            { path: 'courseId', select: 'name description price image enrolledLearners classCompleted satisfactionRate duration' },
+            { path: 'courseId', select: 'name description price image enrolledLearners classCompleted satisfactionRate duration courseCurriculumIds courseLessonIds' },
             { path: 'userId', select: 'fullName email phoneNumber profilePhoto designation' },
         ];
 
@@ -239,10 +268,57 @@ export const get_my_courses = async (req, res) => {
         let newResponse: any[] = [];
 
         for (let course of response) {
-            const totalLesson = await countData(courseLessonModel, { courseId: course.courseId, isDeleted: false });
+            const courseDetail = course.courseId;
+            let lessonIds: any[] = [];
+            let totalLesson = 0;
+
+            if (courseDetail) {
+                if (courseDetail.courseCurriculumIds && courseDetail.courseCurriculumIds.length > 0) {
+                    // Merged course: lessons belong to sub-courses
+                    const subLessons = await courseLessonModel.find({
+                        courseId: { $in: courseDetail.courseCurriculumIds },
+                        isDeleted: false
+                    }).select('_id');
+                    lessonIds = subLessons.map(l => l._id);
+                    totalLesson = lessonIds.length;
+                } else if (courseDetail.courseLessonIds && courseDetail.courseLessonIds.length > 0) {
+                    // Single course
+                    lessonIds = courseDetail.courseLessonIds;
+                    totalLesson = lessonIds.length;
+                } else {
+                    // Fallback
+                    const flatLessons = await courseLessonModel.find({
+                        courseId: courseDetail._id,
+                        isDeleted: false
+                    }).select('_id');
+                    lessonIds = flatLessons.map(l => l._id);
+                    totalLesson = lessonIds.length;
+                }
+            }
+
+            const completedLessons = await countData(userExamAttemptModel, {
+                userId: course.userId,
+                courseLessonId: { $in: lessonIds },
+                status: 'pass'
+            });
+
+            // Compute access expiry info
+            const now = new Date();
+            const accessExpiryDate = course.accessExpiryDate ? new Date(course.accessExpiryDate) : null;
+            const isAccessExpired = accessExpiryDate ? accessExpiryDate < now : false;
+            let daysRemaining: number | null = null;
+            if (accessExpiryDate && !isAccessExpired) {
+                daysRemaining = Math.ceil((accessExpiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
+            }
+
             newResponse.push({
                 ...course,
-                totalLesson
+                totalLesson,
+                completedLessons,
+                accessStartDate: course.accessStartDate || course.purchaseDate || course.createdAt,
+                accessExpiryDate: course.accessExpiryDate || null,
+                isAccessExpired,
+                daysRemaining,
             });
         }
 

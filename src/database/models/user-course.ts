@@ -9,6 +9,8 @@ const userCourseSchema = new mongoose.Schema({
     paymentStatus: { type: String, enum: Object.values(PAYMENT_STATUS), default: PAYMENT_STATUS.PENDING },
     razorpayOrderId: { type: String },
     razorpayPaymentId: { type: String },
+    accessStartDate: { type: Date, default: Date.now },
+    accessExpiryDate: { type: Date, default: null },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 

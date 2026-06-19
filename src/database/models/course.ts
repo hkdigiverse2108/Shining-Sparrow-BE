@@ -16,6 +16,7 @@ const courseSchema = new mongoose.Schema({
     classCompleted: { type: Number, default: 0 },
     satisfactionRate: { type: Number, default: 0 },
     isDeleted: { type: Boolean, default: false },
+    accessDurationDays: { type: Number, default: null },
     isBlocked: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 
