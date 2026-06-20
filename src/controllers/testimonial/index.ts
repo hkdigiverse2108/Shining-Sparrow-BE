@@ -13,6 +13,12 @@ export const add_testimonial = async (req, res) => {
 
         const response = await createData(testimonialModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
+
+        if (value.learningCatalogId && value.type === 'workshop') {
+            const { workshopModel } = require('../../database');
+            await updateData(workshopModel, { _id: new ObjectId(value.learningCatalogId) }, { $push: { workshopTestimonials: response._id } }, {});
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("testimonial"), response, {}))
     } catch (error) {
         console.log(error)
