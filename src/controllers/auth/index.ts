@@ -262,6 +262,11 @@ export const update_profile = async (req, res) => {
         let isExist = await getFirstMatch(userModel, { _id: new ObjectId(user._id), isDeleted: false }, {}, {})
         if (!isExist) return res.status(405).json(new apiResponse(405, responseMessage?.getDataNotFound('user'), {}, {}));
 
+        if (value.phone) {
+            value.phoneNumber = value.phone;
+            delete value.phone;
+        }
+
         let response = await updateData(userModel, { _id: new ObjectId(user._id), isDeleted: false }, value, {})
 
         if (!response) return res.status(405).json(new apiResponse(405, responseMessage?.updateDataError('profile'), {}, {}))
