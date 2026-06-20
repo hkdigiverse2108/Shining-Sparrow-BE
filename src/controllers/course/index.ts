@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel, userLessonCompletionModel } from "../../database";
+import { courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel, userLessonCompletionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseSchema, editCourseSchema, deleteCourseSchema, getCourseSchema, purchaseCourseSchema } from "../../validation";
 import Razorpay from "razorpay";

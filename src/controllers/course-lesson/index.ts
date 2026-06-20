@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userCourseModel, userExamAttemptModel, userModel, userLessonCompletionModel } from "../../database";
+import { courseLessonModel, courseModel, examModel, userCourseModel, userExamAttemptModel, userModel, userLessonCompletionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseLessonSchema, editCourseLessonSchema, deleteCourseLessonSchema, getCourseLessonSchema } from "../../validation";
 
@@ -94,7 +94,7 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
 
         const currentExam = examByLessonId.get(lesson._id.toString())
         const examId = currentExam ? currentExam._id : null
-        
+
         let isCompleted = false
         if (currentExam) {
             const attempt = attemptByExamId.get(currentExam._id.toString())
