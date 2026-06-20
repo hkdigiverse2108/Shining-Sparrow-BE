@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userCourseModel, userExamAttemptModel, userModel } from "../../database";
+import { courseCurriculumModel, courseLessonModel, courseModel, examModel, userCourseModel, userExamAttemptModel, userModel, userLessonCompletionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseLessonSchema, editCourseLessonSchema, deleteCourseLessonSchema, getCourseLessonSchema } from "../../validation";
 
@@ -17,6 +17,7 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
         return lessons.map((lesson, index) => ({
             ...lesson,
             isUnlocked: index === 0,
+            isCompleted: false,
         }))
     }
 
@@ -49,6 +50,15 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
             isCompleted: true,
         }, {}, {})
         : []
+
+    // Get all manual completion records by this user for these lessons
+    const completions = userId
+        ? await getData(userLessonCompletionModel, {
+            userId: new ObjectId(userId),
+            courseLessonId: { $in: lessonIds }
+        }, {}, {})
+        : []
+    const completedLessonIds = new Set(completions.map(c => c.courseLessonId.toString()));
 
     // Build maps for quick lookup
     const examByLessonId = new Map()
@@ -84,7 +94,16 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
 
         const currentExam = examByLessonId.get(lesson._id.toString())
         const examId = currentExam ? currentExam._id : null
-        result.push({ ...lesson, isUnlocked, examId })
+        
+        let isCompleted = false
+        if (currentExam) {
+            const attempt = attemptByExamId.get(currentExam._id.toString())
+            isCompleted = attempt?.status === 'pass'
+        } else {
+            isCompleted = completedLessonIds.has(lesson._id.toString())
+        }
+
+        result.push({ ...lesson, isUnlocked, examId, isCompleted })
     }
 
     return result
@@ -304,5 +323,53 @@ export const get_course_lesson_by_id = async (req, res) => {
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
+    }
+}
+
+export const complete_lesson = async (req, res) => {
+    reqInfo(req)
+    try {
+        const userId = req.headers.user?._id;
+        if (!userId) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}))
+
+        const { courseLessonId, courseId } = req.body;
+        if (!courseLessonId || !courseId) {
+            return res.status(400).json(new apiResponse(400, "courseLessonId and courseId are required", {}, {}))
+        }
+
+        // Verify that the lesson exists and is in the course
+        const lesson = await getFirstMatch(courseLessonModel, { _id: new ObjectId(courseLessonId), isDeleted: false }, {}, {});
+        if (!lesson) {
+            return res.status(404).json(new apiResponse(404, "Lesson not found", {}, {}))
+        }
+
+        // Check if the user has purchased the course
+        const userCourse = await getFirstMatch(userCourseModel, { userId: new ObjectId(userId), courseId: new ObjectId(courseId), isDeleted: false }, {}, {});
+        if (!userCourse) {
+            return res.status(403).json(new apiResponse(403, "You do not have access to this course", {}, {}))
+        }
+
+        // Check if completion record already exists
+        const existingCompletion = await getFirstMatch(userLessonCompletionModel, {
+            userId: new ObjectId(userId),
+            courseLessonId: new ObjectId(courseLessonId)
+        }, {}, {});
+
+        if (existingCompletion) {
+            return res.status(200).json(new apiResponse(200, "Lesson already marked completed", existingCompletion, {}))
+        }
+
+        // Mark it as completed
+        const completion = await createData(userLessonCompletionModel, {
+            userId: new ObjectId(userId),
+            courseId: new ObjectId(courseId),
+            courseLessonId: new ObjectId(courseLessonId)
+        });
+
+        return res.status(200).json(new apiResponse(200, "Lesson marked completed successfully", completion, {}))
+
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
     }
 }

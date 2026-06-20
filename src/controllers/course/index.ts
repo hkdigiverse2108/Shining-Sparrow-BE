@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel } from "../../database";
+import { courseCurriculumModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel, userLessonCompletionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addCourseSchema, editCourseSchema, deleteCourseSchema, getCourseSchema, purchaseCourseSchema } from "../../validation";
 import Razorpay from "razorpay";
@@ -281,12 +281,8 @@ export const get_my_courses = async (req, res) => {
                     }).select('_id');
                     lessonIds = subLessons.map(l => l._id);
                     totalLesson = lessonIds.length;
-                } else if (courseDetail.courseLessonIds && courseDetail.courseLessonIds.length > 0) {
-                    // Single course
-                    lessonIds = courseDetail.courseLessonIds;
-                    totalLesson = lessonIds.length;
                 } else {
-                    // Fallback
+                    // Single course: query courseLessonModel directly to ensure it matches enrichCourseDetails
                     const flatLessons = await courseLessonModel.find({
                         courseId: courseDetail._id,
                         isDeleted: false
@@ -296,11 +292,25 @@ export const get_my_courses = async (req, res) => {
                 }
             }
 
-            const completedLessons = await countData(userExamAttemptModel, {
-                userId: course.userId,
+            const targetUserId = course.userId?._id || course.userId;
+
+            const passedExamLessons = await userExamAttemptModel.find({
+                userId: targetUserId,
                 courseLessonId: { $in: lessonIds },
                 status: 'pass'
-            });
+            }).distinct('courseLessonId');
+
+            const manuallyCompletedLessons = await userLessonCompletionModel.find({
+                userId: targetUserId,
+                courseLessonId: { $in: lessonIds }
+            }).distinct('courseLessonId');
+
+            const completedLessonSet = new Set([
+                ...passedExamLessons.map(id => id.toString()),
+                ...manuallyCompletedLessons.map(id => id.toString())
+            ]);
+
+            const completedLessons = completedLessonSet.size;
 
             // Compute access expiry info
             const now = new Date();
