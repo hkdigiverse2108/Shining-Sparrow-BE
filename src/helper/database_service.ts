@@ -33,8 +33,7 @@ export const createData = async (modelName, objToSave) => {
 }
 
 export const insertMany = async (modelName, objToSave) => {
-    // const users = objToSave.map(user => new User(user));
-    // return modelName.insertMany(users);
+    return modelName.insertMany(objToSave);
 }
 
 export async function aggregateData(modelName, criteria) {

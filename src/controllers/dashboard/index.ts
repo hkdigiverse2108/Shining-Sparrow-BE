@@ -7,7 +7,7 @@ export const dashboard = async (req, res) => {
     try {
         let [sec1, sec2, sec3]: any = await Promise.all([
             (async () => {
-                let dashboard = getDashboardData()
+                let dashboard = await getDashboardData()
                 return dashboard
             })(),
             (async () => {

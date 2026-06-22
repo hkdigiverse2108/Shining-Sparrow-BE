@@ -70,7 +70,7 @@ const health = (req, res) => {
         license: packageInfo.license
     })
 }
-const bad_gateway = (req, res) => { return res.status(502).json({ status: 502, message: "Project Name Backend API Bad Gateway" }) }
+const bad_gateway = (req, res) => { return res.status(404).json({ status: 404, message: "Project Name Backend API Route Not Found" }) }
 
 app.get('/', health);
 app.get('/health', health);

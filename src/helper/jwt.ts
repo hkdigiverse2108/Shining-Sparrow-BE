@@ -65,6 +65,6 @@ export const userJWT = async (req: Request, res: Response, next) => {
             return res.status(410).json(new apiResponse(410, "Invalid Token", {}, {}))
         }
     } else {
-        return next()
+        return res.status(401).json(new apiResponse(401, "Unauthorized: No token provided", {}, {}))
     }
 }

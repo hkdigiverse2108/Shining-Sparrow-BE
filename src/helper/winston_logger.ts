@@ -28,7 +28,7 @@ let alignColorsAndTime = winston.format.combine(
     }),
     winston.format.json(),
     winston.format.printf(
-        info => `\x1b[96m[${name}]` + " " + `\x1b[95m${moment.tz(timeZone)}` + " " + colorizer.colorize(winston.level, `- ${info.level}: ${info.message}`)
+        info => `\x1b[96m[${name}]` + " " + `\x1b[95m${moment.tz(timeZone)}` + " " + colorizer.colorize(info.level, `- ${info.level}: ${info.message}`)
     )
 );
 
