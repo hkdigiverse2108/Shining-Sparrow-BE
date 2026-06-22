@@ -4,35 +4,34 @@
  */
 import winston from 'winston'
 import moment from 'moment-timezone'
+
 const timeFormat = moment().format('DD-MM-YYYY hh:mm:ss A')
-const colorizer = winston.format.colorize()
 const timeZone: any = "Asia/Calcutta"
-let logColor: any = {
-    colors: {
-        error: "red",
-        warn: "magenta",
-        info: "yellow",
-        http: "green",
-        debug: "cyan"
-    }
-},
-    name: String = "Q&A"
+const name: string = "Q&A"
+
+const logColor = {
+    error: "red",
+    warn: "magenta",
+    info: "yellow",
+    http: "green",
+    debug: "cyan"
+}
+
 winston.addColors(logColor)
 
-let alignColorsAndTime = winston.format.combine(
+const alignColorsAndTime = winston.format.combine(
     winston.format.colorize({
         all: true
     }),
     winston.format.timestamp({
         format: timeFormat
     }),
-    winston.format.json(),
     winston.format.printf(
-        info => `\x1b[96m[${name}]` + " " + `\x1b[95m${moment.tz(timeZone)}` + " " + colorizer.colorize(info.level, `- ${info.level}: ${info.message}`)
+        info => `\x1b[96m[${name}]` + " " + `\x1b[95m${moment.tz(timeZone)}` + " " + `- ${info.level}: ${info.message}`
     )
-);
+)
 
-let fileLogger = winston.format.combine(
+const fileLogger = winston.format.combine(
     winston.format.timestamp({
         format: timeFormat
     }),
