@@ -163,8 +163,23 @@ export const edit_course_lesson_by_id = async (req, res) => {
         const { error, value } = editCourseLessonSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
+        const lesson = await getFirstMatch(courseLessonModel, { _id: new ObjectId(value.courseLessonId), isDeleted: false }, {}, {});
+        if (!lesson) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+
+        const oldCourseId = lesson.courseId;
+        const newCourseId = value.courseId;
+
         const response = await updateData(courseLessonModel, { _id: new ObjectId(value.courseLessonId), isDeleted: false }, value, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.updateDataError("course lesson"), {}, {}))
+
+        // If the lesson's courseId was updated, synchronize both courses' lesson ID lists to prevent leakage
+        if (newCourseId && oldCourseId && oldCourseId.toString() !== newCourseId.toString()) {
+            await updateData(courseModel, { _id: oldCourseId, isDeleted: false }, { $pull: { courseLessonIds: response._id } }, { new: true, timestamps: false })
+            await updateData(courseModel, { _id: new ObjectId(newCourseId), isDeleted: false }, { $push: { courseLessonIds: response._id } }, { new: true, timestamps: false })
+        } else if (newCourseId && !oldCourseId) {
+            await updateData(courseModel, { _id: new ObjectId(newCourseId), isDeleted: false }, { $push: { courseLessonIds: response._id } }, { new: true, timestamps: false })
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.updateDataSuccess("course lesson"), response, {}))
     } catch (error) {
         console.log(error)
