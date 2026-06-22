@@ -80,15 +80,21 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
             // First lesson always unlocked
             isUnlocked = true
         } else {
-            // Check previous lesson's exam
-            const prevLesson = sorted[i - 1]
-            const prevExam = examByLessonId.get(prevLesson._id.toString())
-            if (!prevExam) {
-                // No exam for previous lesson → this lesson is unlocked
-                isUnlocked = true
+            // Check previous lesson
+            const prevLesson = result[i - 1]
+            if (!prevLesson.isUnlocked) {
+                // If previous lesson is locked, this lesson is also locked
+                isUnlocked = false
             } else {
-                const prevAttempt = attemptByExamId.get(prevExam._id.toString())
-                isUnlocked = prevAttempt?.status === 'pass'
+                // Check previous lesson's exam
+                const prevExam = examByLessonId.get(prevLesson._id.toString())
+                if (!prevExam) {
+                    // No exam for previous lesson → this lesson is unlocked
+                    isUnlocked = true
+                } else {
+                    const prevAttempt = attemptByExamId.get(prevExam._id.toString())
+                    isUnlocked = prevAttempt?.status === 'pass'
+                }
             }
         }
 

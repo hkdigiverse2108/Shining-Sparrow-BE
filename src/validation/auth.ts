@@ -65,6 +65,7 @@ export const updateProfileSchema = Joi.object().keys({
     district: Joi.string().allow('', null).optional(),
     std: Joi.string().allow('', null).optional(),
     reachFrom: Joi.string().allow('', null).optional(),
+    schoolName: Joi.string().allow('', null).optional(),
 });
 
 export const deleteUserAccountSchema = Joi.object().keys({

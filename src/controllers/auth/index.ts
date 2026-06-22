@@ -95,6 +95,12 @@ export const otp_verification = async (req, res) => {
                 email: response?.email,
                 role: response?.role,
                 fullName: response?.fullName,
+                district: response?.district,
+                std: response?.std,
+                reachFrom: response?.reachFrom,
+                schoolName: response?.schoolName,
+                profilePhoto: response?.profilePhoto,
+                designation: response?.designation,
                 token,
             }
             return res.status(200).json(new apiResponse(200, responseMessage?.OTPVerified, result, {}))
@@ -143,6 +149,12 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             phoneNumber: response?.phoneNumber,
             otr: response?.otr,
             fullName: response?.fullName,
+            district: response?.district,
+            std: response?.std,
+            reachFrom: response?.reachFrom,
+            schoolName: response?.schoolName,
+            profilePhoto: response?.profilePhoto,
+            designation: response?.designation,
             token,
         }
         return res.status(200).json(new apiResponse(200, responseMessage?.loginSuccess, result, {}))

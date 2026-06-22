@@ -11,7 +11,7 @@
     "deploy": "start deploy.bat",
     "ebs": "start ebs.bat",
     "dist": "sh ./scripts/build.sh",
-    "server": "tsc-watch --outDir ./build --onSuccess \"npm run start -- --mode=http\" --onFailure \"echo ERROR! Compilation Failed\""
+    "server": "tsc-watch --outDir ./build --onSuccess \"node build/server.js --mode=http\" --onFailure \"echo ERROR! Compilation Failed\""
   },
   "author": "Pramit Mangukiya",
   "license": "ISC",
