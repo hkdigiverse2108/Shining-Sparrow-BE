@@ -12,4 +12,3 @@ router.get('/all', courseLessonController.get_all_course_lessons);
 router.get('/:id', courseLessonController.get_course_lesson_by_id);
 
 export const courseLessonRoute = router;
-

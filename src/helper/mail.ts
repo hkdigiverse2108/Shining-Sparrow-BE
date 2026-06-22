@@ -22,12 +22,12 @@ export const email_verification_mail = async (user: any, otp: any) => {
             const mailOptions = {
                 from: mail,
                 to: user.email,
-                subject: "Login OTP - HK DigiSkill",
+                subject: "Login OTP - Shining Sparrow",
                 html: `
                 <html lang="en-US">
                 <head>
                     <meta charset="utf-8" />
-                    <title>HK DigiSkill - Login OTP</title>
+                    <title>Shining Sparrow - Login OTP</title>
                 </head>
                 <body style="margin:0; padding:20px; background:#f7f7f7; font-family:Arial, sans-serif;">
                     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px; margin:auto; background:#fff; padding:25px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
@@ -38,7 +38,7 @@ export const email_verification_mail = async (user: any, otp: any) => {
                                 </p>
 
                                 <p style="font-size:15px; color:#555; line-height:24px;">
-                                    Someone — hopefully you — is trying to log in to their <strong>HK DigiSkill</strong> account.<br><br>
+                                    Someone — hopefully you — is trying to log in to their <strong>Shining Sparrow</strong> account.<br><br>
                                     Your OTP is valid for <strong>10 minutes</strong>.<br><br>
                                     <strong>Login OTP:</strong> <span style="font-size:20px; font-weight:bold; color:#000;">${otp}</span><br><br>
                                     If this was not you, please ignore this email and secure your account.
@@ -46,10 +46,10 @@ export const email_verification_mail = async (user: any, otp: any) => {
 
                                 <p style="font-size:15px; color:#333; margin-top:30px;">
                                     Warm Regards,<br>
-                                    <strong>Team HK DigiSkill</strong><br>
-                                    Powered by <strong>HK DigiVerse LLP</strong><br>
-                                    <a href="https://www.hkdigiskill.com" target="_blank" style="color:#1a73e8; text-decoration:none;">
-                                        www.hkdigiskill.com
+                                    <strong>Team Shining Sparrow</strong><br>
+                                    Powered by <strong>Shining Sparrow</strong><br>
+                                    <a href="#" target="_blank" style="color:#1a73e8; text-decoration:none;">
+                                        www.shiningsparrow.com
                                     </a>
                                 </p>
                             </td>
