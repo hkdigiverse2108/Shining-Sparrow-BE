@@ -1,5 +1,5 @@
 import { apiResponse } from "../../common";
-import { aboutUsModel } from "../../database/models/about_us";
+import { aboutUsModel } from "../../database";
 import { reqInfo, responseMessage } from "../../helper";
 import { addEditAboutUsSchema } from "../../validation";
 
