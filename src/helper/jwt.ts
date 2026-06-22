@@ -18,8 +18,10 @@ export const adminJWT = async (req: Request, res: Response, next) => {
             }
             let isVerifyToken = jwt.verify(token, jwt_token_secret)
             result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false });
-            if (result?.isBlocked == true) return res.status(403).json(new apiResponse(403, 'Your account has been blocked.', {}, {}));
-            if (result?.isDeleted == false) {
+            if (!result) return res.status(401).json(new apiResponse(401, "User not found", {}, {}));
+            if (result.isBlocked == true) return res.status(403).json(new apiResponse(403, 'Your account has been blocked.', {}, {}));
+            if (result.role !== 'admin') return res.status(403).json(new apiResponse(403, 'Access denied. Admin only.', {}, {}));
+            if (result.isDeleted == false) {
                 req.headers.user = result
                 return next()
             } else {

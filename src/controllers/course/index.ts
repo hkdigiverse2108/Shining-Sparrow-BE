@@ -232,6 +232,7 @@ export const purchase_course = async (req, res) => {
         const response = await createData(userCourseModel, purchaseData);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
         await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $push: { courseIds: new ObjectId(response.courseId) } }, { new: true, timestamps: false })
+        await updateData(courseModel, { _id: new ObjectId(response.courseId), isDeleted: false }, { $inc: { enrolledLearners: 1 } }, {})
         return res.status(200).json(new apiResponse(200, responseMessage?.purchaseSuccess, response, {}))
     } catch (error) {
         console.log(error)
