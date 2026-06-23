@@ -8,7 +8,6 @@ const workshopSchema = new mongoose.Schema({
     pdfAttach: { type: String },
     workshopCurriculum: [{ type: mongoose.Schema.Types.ObjectId, ref: 'workshop-curriculum' }],
     workshopTestimonials: [{ type: mongoose.Schema.Types.ObjectId, ref: 'testimonial' }],
-    workshopFAQ: [{ type: mongoose.Schema.Types.ObjectId, ref: 'faq' }],
     price: { type: Number, default: 0 },
     mrpPrice: { type: Number, default: 0 },
     validFor: { type: String },

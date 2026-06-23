@@ -74,8 +74,7 @@ export const get_all_workshop = async (req, res) => {
 
         let populateModel = [
             { path: 'workshopCurriculum', select: 'title date thumbnail videoLink duration' },
-            { path: 'workshopTestimonials', select: 'name designation rate description image' },
-            { path: 'workshopFAQ', select: 'question answer' }
+            { path: 'workshopTestimonials', select: 'name designation rate description image' }
         ]
 
         const workshops = await findAllWithPopulateWithSorting(workshopModel, criteria, {}, options, populateModel)
@@ -121,8 +120,7 @@ export const get_workshop_by_id = async (req, res) => {
 
         const populateModels = [
             { path: 'workshopCurriculum', select: 'title date thumbnail videoLink duration description attachment' },
-            { path: 'workshopTestimonials', select: 'name designation rate description image' },
-            { path: 'workshopFAQ', select: 'question answer' }
+            { path: 'workshopTestimonials', select: 'name designation rate description image' }
         ];
 
         const response = await findOneAndPopulate(workshopModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, { lean: true }, populateModels)
