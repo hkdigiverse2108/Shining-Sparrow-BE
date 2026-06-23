@@ -21,7 +21,7 @@ export const add_edit_settings = async (req, res) => {
 export const get_settings = async (req, res) => {
     reqInfo(req)
     try {
-        const response = await settingsModel.findOne({ isDeleted: false })
+        const response = await settingsModel.findOne({ isDeleted: false }).select('-razorpaySecret')
 
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("settings"), {}, {}))
 

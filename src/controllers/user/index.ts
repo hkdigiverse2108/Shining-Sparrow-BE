@@ -1,5 +1,5 @@
 import { apiResponse, generateHash, generateToken, getUniqueOtr, USER_ROLES } from "../../common";
-import { userAccountDeletionModel, userModel } from "../../database";
+import { userAccountDeletionModel, userModel, userCourseModel, workshopPaymentModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData, send_otr_mail } from "../../helper";
 import { addUserSchema, editUserSchema, deleteUserSchema, getUserSchema } from "../../validation";
 import bcryptjs from 'bcryptjs'
@@ -131,7 +131,7 @@ export const get_all_user = async (req, res) => {
             options.limit = parseInt(limit)
         }
 
-        const response = await getDataWithSorting(userModel, criteria, {}, options)
+        const response = await getDataWithSorting(userModel, criteria, { password: 0, otp: 0, otpExpireTime: 0 }, options)
         const totalCount = await countData(userModel, criteria)
         const stateObj = {
             page: parseInt(page) || 1,
@@ -154,7 +154,7 @@ export const get_user_by_id = async (req, res) => {
     try {
         const { error, value } = getUserSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
-        const response = await getFirstMatch(userModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
+        const response = await getFirstMatch(userModel, { _id: new ObjectId(value.id), isDeleted: false }, { password: 0, otp: 0, otpExpireTime: 0 }, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("user"), {}, {}))
 
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("user"), response, {}))
@@ -200,6 +200,86 @@ export const get_all_delete_user = async (req, res) => {
             user_delete_data: response,
             totalData: totalCount,
             state: stateObj
+        }, {}))
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
+    }
+}
+
+export const get_payment_history = async (req, res) => {
+    reqInfo(req)
+    try {
+        const userId = req.headers.user?._id;
+        if (!userId) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}))
+
+        // Get Course purchases
+        const coursesPurchased = await userCourseModel.find({
+            userId: new ObjectId(userId),
+            isDeleted: false
+        }).populate({
+            path: 'courseId',
+            select: 'name price image description'
+        }).lean();
+
+        // Get Workshop purchases
+        const workshopsPurchased = await workshopPaymentModel.find({
+            userId: new ObjectId(userId),
+            isDeleted: false
+        }).populate({
+            path: 'workshopId',
+            select: 'title price image subTitle'
+        }).lean();
+
+        const history: any[] = [];
+        let totalSpent = 0;
+
+        // Normalize Courses
+        for (const record of coursesPurchased) {
+            const course = record.courseId;
+            const amountPaid = course?.price || 0;
+            if (record.paymentStatus === 'completed') {
+                totalSpent += amountPaid;
+            }
+            history.push({
+                _id: record._id,
+                type: 'course',
+                name: course?.name || 'Unknown Course',
+                image: course?.image || '',
+                paymentId: record.razorpayPaymentId || 'N/A',
+                orderId: record.razorpayOrderId || 'N/A',
+                amount: amountPaid,
+                status: record.paymentStatus,
+                date: record.purchaseDate || record.createdAt
+            });
+        }
+
+        // Normalize Workshops
+        for (const record of workshopsPurchased) {
+            const workshop = record.workshopId;
+            const amountPaid = record.finalAmount ?? record.amount ?? workshop?.price ?? 0;
+            if (record.paymentStatus === 'completed') {
+                totalSpent += amountPaid;
+            }
+            history.push({
+                _id: record._id,
+                type: 'workshop',
+                name: workshop?.title || 'Unknown Workshop',
+                image: workshop?.image || '',
+                paymentId: record.paymentId || 'N/A',
+                orderId: record.receiptNumber || 'N/A',
+                amount: amountPaid,
+                status: record.paymentStatus,
+                date: record.transactionDate || record.createdAt
+            });
+        }
+
+        // Sort history by date descending
+        history.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+        return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('payment history'), {
+            history,
+            totalSpent
         }, {}))
     } catch (error) {
         console.log(error)
