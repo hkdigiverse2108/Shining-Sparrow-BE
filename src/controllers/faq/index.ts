@@ -71,7 +71,7 @@ export const get_all_faq = async (req, res) => {
         }
 
         if (learningCatalogFilter) {
-            criteria.learningCatalogId = new ObjectId(learningCatalogFilter)
+            criteria.learningCatalogId = { $in: [new ObjectId(learningCatalogFilter), null] }
         }
 
         if (isFeatured !== undefined) {
