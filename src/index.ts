@@ -16,6 +16,7 @@ import fs from "fs"
 import { Server } from 'socket.io'
 import jwt from 'jsonwebtoken'
 import { userModel } from './database'
+import { config } from '../config';
 
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -23,6 +24,7 @@ const app = express();
 app.use(cors());
 app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
 app.use("/pdf", express.static(path.join(__dirname, "..", "..", "pdf")));
+app.use("/docs", express.static(path.join(__dirname, "..", "..", "docs")));
 
 const fileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -45,7 +47,9 @@ const fileFilter = (req, file, cb) => {
         file.mimetype === "image/jpg" ||
         file.mimetype === "image/webp" ||
         file.mimetype === "image/jpeg" ||
-        file.mimetype === 'application/pdf'
+        file.mimetype === 'application/pdf' ||
+        file.mimetype === 'application/msword' ||
+        file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
         cb(null, true);
     } else {
@@ -55,7 +59,7 @@ const fileFilter = (req, file, cb) => {
 
 
 app.use(mongooseConnection);
-app.use(multer({ storage: fileStorage, fileFilter }).fields([{ name: "images", maxCount: 100 }, { name: 'pdf', maxCount: 100 }]));
+app.use(multer({ storage: fileStorage, fileFilter }).fields([{ name: "images", maxCount: 100 }, { name: 'pdf', maxCount: 100 }, { name: 'doc', maxCount: 100 }]));
 app.use(bodyParser.json({ limit: "200mb" }));
 app.use(bodyParser.urlencoded({ limit: "200mb", extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -101,13 +105,21 @@ io.on('connection', async (socket) => {
     // Authenticate user from JWT
     if (token) {
         try {
-            const decoded = jwt.verify(token, process.env.JWT_TOKEN_SECRET);
+            let actualToken = token;
+            if (typeof token === 'string' && token.startsWith("Bearer ")) {
+                actualToken = token.split(" ")[1];
+            }
+            const decoded = jwt.verify(actualToken, config.JWT_TOKEN_SECRET || process.env.JWT_TOKEN_SECRET);
             const user = await userModel.findOne({ _id: new ObjectId(decoded._id), isDeleted: false }).lean();
             if (user) {
                 userId = user._id.toString();
                 userRole = user.role;
                 // Join personal room by userId
                 socket.join(userId);
+                if (userRole === 'admin') {
+                    socket.join('admins');
+                }
+                console.log(`Socket authenticated user: ${user.fullName} (${userRole})`);
             }
         } catch (err) {
             console.log('Socket auth failed:', err.message);
@@ -120,17 +132,13 @@ io.on('connection', async (socket) => {
     // Join user's personal chat rooms
     if (userId) {
         const { chatRoomModel } = require('./database');
-        const personalRooms = await chatRoomModel.find({
-            type: 'personal',
-            participants: new ObjectId(userId),
-            isDeleted: false,
-        }).lean();
+        const query: any = { type: 'personal', isDeleted: false };
+        if (userRole !== 'admin') {
+            query.participants = new ObjectId(userId);
+        }
+        const personalRooms = await chatRoomModel.find(query).lean();
         personalRooms.forEach(room => socket.join(room._id.toString()));
     }
-
-    socket.on('send_message', async (data) => {
-        // Messages are persisted via REST API, this is just for real-time relay
-    });
 
     socket.on('disconnect', () => {
         // Cleanup if needed

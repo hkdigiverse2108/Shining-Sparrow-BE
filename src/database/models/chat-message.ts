@@ -4,6 +4,11 @@ const chatMessageSchema = new mongoose.Schema({
     roomId: { type: mongoose.Schema.Types.ObjectId, ref: 'chat-room', required: true },
     senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true },
     message: { type: String, required: true },
+    attachment: {
+        url: { type: String },
+        type: { type: String, enum: ['image', 'pdf', 'doc'] },
+        name: { type: String },
+    },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 

@@ -14,14 +14,16 @@ router.post("/", (req: any, res: any) => {
     try {
         const hasImages = req.files && req.files.images && req.files.images.length > 0;
         const hasPdfs = req.files && req.files.pdf && req.files.pdf.length > 0;
+        const hasDocs = req.files && req.files.doc && req.files.doc.length > 0;
 
-        // At least one of images or pdf must be uploaded
-        if (!hasImages && !hasPdfs) {
+        // At least one type must be uploaded
+        if (!hasImages && !hasPdfs && !hasDocs) {
             return res.status(400).json(new apiResponse(400, "No files uploaded", {}, {}));
         }
 
         const uploadedImages: string[] = [];
         const uploadedPdfs: string[] = [];
+        const uploadedDocs: string[] = [];
 
         // MOVE IMAGES (if any)
         if (hasImages) {
@@ -60,7 +62,22 @@ router.post("/", (req: any, res: any) => {
             });
         }
 
-        return res.status(200).json(new apiResponse(200, "Files uploaded successfully", { images: uploadedImages, pdfs: uploadedPdfs }, {}));
+        // MOVE DOCS (if any)
+        if (hasDocs) {
+            const docDir = path.join(process.cwd(), "docs");
+            if (!fs.existsSync(docDir)) {
+                fs.mkdirSync(docDir, { recursive: true });
+            }
+
+            req.files.doc.forEach((file: any) => {
+                const newPath = path.join(docDir, file.filename);
+                fs.renameSync(file.path, newPath);
+                const docUrl = `${config.BACKEND_URL}/docs/${file.filename}`;
+                uploadedDocs.push(docUrl);
+            });
+        }
+
+        return res.status(200).json(new apiResponse(200, "Files uploaded successfully", { images: uploadedImages, pdfs: uploadedPdfs, docs: uploadedDocs }, {}));
 
     } catch (error) {
         console.log(error);
@@ -117,6 +134,23 @@ router.delete("/", (req: any, res: any) => {
 
             fs.unlinkSync(pdfPath);
             return res.status(200).json(new apiResponse(200, "PDF deleted successfully", {}, {}));
+        }
+
+        if (type === "docs") {
+            const filename = pathParts[1];
+
+            if (!filename) {
+                return res.status(400).json(new apiResponse(400, "Invalid doc URL", {}, {}));
+            }
+
+            const docPath = path.join(process.cwd(), "docs", filename);
+
+            if (!fs.existsSync(docPath)) {
+                return res.status(404).json(new apiResponse(404, "Doc not found", {}, {}));
+            }
+
+            fs.unlinkSync(docPath);
+            return res.status(200).json(new apiResponse(200, "Doc deleted successfully", {}, {}));
         }
 
         return res.status(400).json(new apiResponse(400, "Unsupported file type in URL", {}, {}));

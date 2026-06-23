@@ -8,7 +8,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 export const send_message = async (req, res) => {
     try {
         const { user } = req.headers;
-        const { roomId, message } = req.body;
+        const { roomId, message, attachment } = req.body;
 
         if (!user) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}));
 
@@ -26,7 +26,7 @@ export const send_message = async (req, res) => {
                     type: 'global',
                     participants: [],
                     createdBy: new ObjectId(user._id),
-                    lastMessage: message,
+                    lastMessage: message || (attachment ? attachment.name : ''),
                     lastMessageAt: new Date(),
                 });
             }
@@ -34,10 +34,11 @@ export const send_message = async (req, res) => {
             const newMessage = await createData(chatMessageModel, {
                 roomId: new ObjectId(globalRoom._id),
                 senderId: new ObjectId(user._id),
-                message,
+                message: message || '',
+                ...(attachment && { attachment }),
             });
 
-            await updateData(chatRoomModel, { _id: new ObjectId(globalRoom._id) }, { lastMessage: message, lastMessageAt: new Date() }, {});
+            await updateData(chatRoomModel, { _id: new ObjectId(globalRoom._id) }, { lastMessage: message || (attachment ? attachment.name : ''), lastMessageAt: new Date() }, {});
 
             const populatedMessage = await chatMessageModel.findById(newMessage._id).populate('senderId', 'fullName role profilePhoto').lean();
 
@@ -68,10 +69,11 @@ export const send_message = async (req, res) => {
         const newMessage = await createData(chatMessageModel, {
             roomId: new ObjectId(roomId),
             senderId: new ObjectId(user._id),
-            message,
+            message: message || '',
+            ...(attachment && { attachment }),
         });
 
-        await updateData(chatRoomModel, { _id: new ObjectId(roomId) }, { lastMessage: message, lastMessageAt: new Date() }, {});
+        await updateData(chatRoomModel, { _id: new ObjectId(roomId) }, { lastMessage: message || (attachment ? attachment.name : ''), lastMessageAt: new Date() }, {});
 
         const populatedMessage = await chatMessageModel.findById(newMessage._id).populate('senderId', 'fullName role profilePhoto').lean();
 
@@ -219,7 +221,19 @@ export const create_room = async (req, res) => {
                 }
             });
 
-            ioInstance.to(adminUser._id.toString()).emit('room_created', { room: populatedRoom });
+            // Join all connected admins to this room
+            const adminSockets = ioInstance.sockets.adapter.rooms.get('admins');
+            if (adminSockets) {
+                for (const socketId of adminSockets) {
+                    const s = ioInstance.sockets.sockets.get(socketId);
+                    if (s) {
+                        s.join(newRoom._id.toString());
+                    }
+                }
+            }
+
+            // Emit to adminUser and user, plus all other admins
+            ioInstance.to('admins').emit('room_created', { room: populatedRoom });
             ioInstance.to(user._id.toString()).emit('room_created', { room: populatedRoom });
         }
 
