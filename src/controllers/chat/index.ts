@@ -8,7 +8,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 export const send_message = async (req, res) => {
     try {
         const { user } = req.headers;
-        const { roomId, message, attachment } = req.body;
+        const { roomId, message, attachment, replyTo } = req.body;
 
         if (!user) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}));
 
@@ -36,11 +36,21 @@ export const send_message = async (req, res) => {
                 senderId: new ObjectId(user._id),
                 message: message || '',
                 ...(attachment && { attachment }),
+                ...(replyTo && { replyTo: new ObjectId(replyTo) }),
             });
 
             await updateData(chatRoomModel, { _id: new ObjectId(globalRoom._id) }, { lastMessage: message || (attachment ? attachment.name : ''), lastMessageAt: new Date() }, {});
 
-            const populatedMessage = await chatMessageModel.findById(newMessage._id).populate('senderId', 'fullName role profilePhoto').lean();
+            const populatedMessage = await chatMessageModel.findById(newMessage._id)
+                .populate('senderId', 'fullName role profilePhoto')
+                .populate({
+                    path: 'replyTo',
+                    populate: {
+                        path: 'senderId',
+                        select: 'fullName role profilePhoto'
+                    }
+                })
+                .lean();
 
             // Emit via Socket.io (attached in index.ts)
             if (req.app.get('io')) {
@@ -71,11 +81,21 @@ export const send_message = async (req, res) => {
             senderId: new ObjectId(user._id),
             message: message || '',
             ...(attachment && { attachment }),
+            ...(replyTo && { replyTo: new ObjectId(replyTo) }),
         });
 
         await updateData(chatRoomModel, { _id: new ObjectId(roomId) }, { lastMessage: message || (attachment ? attachment.name : ''), lastMessageAt: new Date() }, {});
 
-        const populatedMessage = await chatMessageModel.findById(newMessage._id).populate('senderId', 'fullName role profilePhoto').lean();
+        const populatedMessage = await chatMessageModel.findById(newMessage._id)
+            .populate('senderId', 'fullName role profilePhoto')
+            .populate({
+                path: 'replyTo',
+                populate: {
+                    path: 'senderId',
+                    select: 'fullName role profilePhoto'
+                }
+            })
+            .lean();
 
         // Emit to room participants
         if (req.app.get('io')) {
@@ -161,8 +181,17 @@ export const get_messages = async (req, res) => {
         const messages = await getData(chatMessageModel, criteria, {}, options);
         const totalCount = await countData(chatMessageModel, criteria);
 
-        // Populate sender info
-        const populatedMessages = await chatMessageModel.populate(messages, { path: 'senderId', select: 'fullName role profilePhoto' });
+        // Populate sender info and replyTo info
+        const populatedMessages = await chatMessageModel.populate(messages, [
+            { path: 'senderId', select: 'fullName role profilePhoto' },
+            {
+                path: 'replyTo',
+                populate: {
+                    path: 'senderId',
+                    select: 'fullName role profilePhoto'
+                }
+            }
+        ]);
 
         return res.status(200).json(new apiResponse(200, responseMessage.getDataSuccess('messages'), {
             message_data: populatedMessages.reverse(),

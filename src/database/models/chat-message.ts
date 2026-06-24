@@ -9,6 +9,7 @@ const chatMessageSchema = new mongoose.Schema({
         type: { type: String, enum: ['image', 'pdf', 'doc'] },
         name: { type: String },
     },
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'chat-message', default: null },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 
