@@ -18,6 +18,7 @@ const courseSchema = new mongoose.Schema({
     isDeleted: { type: Boolean, default: false },
     accessDurationDays: { type: Number, default: null },
     isBlocked: { type: Boolean, default: false },
+    trailerUrl: { type: String, default: null },
 }, { timestamps: true, versionKey: false });
 
 export const courseModel = mongoose.model('course', courseSchema);
