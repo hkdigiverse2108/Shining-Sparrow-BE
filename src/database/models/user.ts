@@ -17,6 +17,7 @@ const userSchema: any = new mongoose.Schema({
     std: { type: String, default: null },
     reachFrom: { type: String, default: null },
     schoolName: { type: String, default: null },
+    address: { type: String, default: null },
     otp: { type: Number, default: null },
     otpExpireTime: { type: Date, default: null },
     isEmailVerified: { type: Boolean, default: false },

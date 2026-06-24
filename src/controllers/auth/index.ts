@@ -3,8 +3,8 @@ import bcryptjs from 'bcryptjs'
 import { Request, Response } from 'express'
 import { userModel, userAccountDeletionModel } from '../../database'
 import { apiResponse, generateHash, generateToken, getUniqueOtp, USER_ROLES } from '../../common'
-import { createData, email_verification_mail, getFirstMatch, reqInfo, responseMessage, updateData } from '../../helper'
-import { forgotPasswordSchema, otpVerifySchema, resetPasswordSchema, signUpSchema, loginSchema, changePasswordSchema, updateProfileSchema, deleteUserAccountSchema, resendOTPSchema } from '../../validation'
+import { createData, email_verification_mail, getFirstMatch, reqInfo, responseMessage, updateData, send_otr_mail, send_forgot_otr_mail } from '../../helper'
+import { forgotPasswordSchema, otpVerifySchema, resetPasswordSchema, signUpSchema, loginSchema, changePasswordSchema, updateProfileSchema, deleteUserAccountSchema, resendOTPSchema, forgotOtrSchema } from '../../validation'
 
 const ObjectId = require('mongoose').Types.ObjectId
 
@@ -101,6 +101,7 @@ export const otp_verification = async (req, res) => {
                 schoolName: response?.schoolName,
                 profilePhoto: response?.profilePhoto,
                 designation: response?.designation,
+                address: response?.address,
                 token,
             }
             return res.status(200).json(new apiResponse(200, responseMessage?.OTPVerified, result, {}))
@@ -155,6 +156,7 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             schoolName: response?.schoolName,
             profilePhoto: response?.profilePhoto,
             designation: response?.designation,
+            address: response?.address,
             token,
         }
         return res.status(200).json(new apiResponse(200, responseMessage?.loginSuccess, result, {}))
@@ -190,6 +192,24 @@ export const forgot_password = async (req, res) => {
 
     } catch (error) {
         console.log(error)
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+};
+
+export const forgot_otr = async (req, res) => {
+    reqInfo(req);
+    try {
+        const { error, value } = forgotOtrSchema.validate(req.body);
+        if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}));
+
+        const user = await getFirstMatch(userModel, { email: value?.email, role: USER_ROLES.USER, isDeleted: false }, {}, {});
+        if (!user) return res.status(404).json(new apiResponse(404, "Student account not found with this email.", {}, {}));
+        if (user.isBlocked) return res.status(403).json(new apiResponse(403, responseMessage?.accountBlock, {}, {}));
+
+        await send_forgot_otr_mail(user, user.otr);
+        return res.status(200).json(new apiResponse(200, "OTR sent successfully to your registered email.", {}, {}));
+    } catch (error) {
+        console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
     }
 };

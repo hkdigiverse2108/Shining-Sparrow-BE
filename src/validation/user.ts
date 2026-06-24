@@ -29,6 +29,7 @@ export const editUserSchema = Joi.object().keys({
     std: Joi.string().allow('', null).optional(),
     reachFrom: Joi.string().allow('', null).optional(),
     schoolName: Joi.string().allow('', null).optional(),
+    address: Joi.string().allow('', null).optional(),
     agreeTerms: Joi.boolean().optional(),
     isEmailVerified: Joi.boolean().optional(),
     isBlocked: Joi.boolean().optional(),
