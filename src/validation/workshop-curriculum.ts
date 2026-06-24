@@ -10,6 +10,7 @@ export const addWorkshopCurriculumSchema = Joi.object().keys({
     description: Joi.string().allow('', null).optional(),
     duration: Joi.number().optional(),
     attachment: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().default(false),
 })
 
 export const editWorkshopCurriculumSchema = Joi.object().keys({
@@ -23,6 +24,7 @@ export const editWorkshopCurriculumSchema = Joi.object().keys({
     description: Joi.string().allow('', null).optional(),
     duration: Joi.number().optional(),
     attachment: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteWorkshopCurriculumSchema = Joi.object().keys({
@@ -31,5 +33,10 @@ export const deleteWorkshopCurriculumSchema = Joi.object().keys({
 
 export const getWorkshopCurriculumSchema = Joi.object().keys({
     id: Joi.string().required(),
+})
+
+export const completeWorkshopCurriculumSchema = Joi.object().keys({
+    workshopId: Joi.string().required(),
+    workshopCurriculumId: Joi.string().required(),
 })
 
