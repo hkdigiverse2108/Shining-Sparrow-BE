@@ -142,4 +142,5 @@ export const MEDIA_CATEGORY = {
     CURRICULUM: "curriculum",
     INSTRUCTORS: "instructors",
     USER: "user",
+    CHAT: "chat",
 }

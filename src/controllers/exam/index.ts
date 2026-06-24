@@ -38,6 +38,7 @@ export const add_exam = async (req, res) => {
             passingMarks: value.passingMarks,
             totalMarks: value.totalMarks,
             timeLimit: value.timeLimit,
+            priority: value.priority,
         }
 
         const response = await createData(examModel, examData);

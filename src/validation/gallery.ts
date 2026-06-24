@@ -4,6 +4,7 @@ export const addGallerySchema = Joi.object().keys({
     images: Joi.array().items(Joi.string()).required(),
     title: Joi.string().required(),
     description: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editGallerySchema = Joi.object().keys({
@@ -11,6 +12,7 @@ export const editGallerySchema = Joi.object().keys({
     images: Joi.array().items(Joi.string()).optional(),
     title: Joi.string().required(),
     description: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteGallerySchema = Joi.object().keys({

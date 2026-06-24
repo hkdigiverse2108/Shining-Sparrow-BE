@@ -24,6 +24,7 @@ import { dashboardRoute } from './dashboard'
 import { questionRoute } from './question'
 import { examRoute } from './exam'
 import { notificationRoute } from './notification'
+import { chatRoute } from './chat'
 
 const router = express.Router()
 
@@ -52,5 +53,6 @@ router.use('/dashboard', dashboardRoute)
 router.use('/question', questionRoute)
 router.use('/exam', examRoute)
 router.use('/notification', notificationRoute)
+router.use('/chat', chatRoute)
 
 export { router }

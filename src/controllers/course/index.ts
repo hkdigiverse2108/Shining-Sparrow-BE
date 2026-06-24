@@ -99,6 +99,11 @@ export const get_all_course = async (req, res) => {
         const { page, limit, search, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
+
         if (search) {
             criteria.$or = [
                 { name: { $regex: search, $options: 'si' } },
@@ -161,6 +166,11 @@ export const get_course_by_id = async (req, res) => {
         const populateModel = [{ path: 'courseCurriculumIds' }];
         const response = await findOneAndPopulate(courseModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {}, populateModel);
         if (!response || response.isDeleted) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course"), {}, {}))
+
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin && response.isBlocked) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course"), {}, {}))
+        }
 
         const userId = user && user?._id ? user._id.toString() : null;
         const enriched = await enrichCourseDetails(response, userId);
@@ -232,6 +242,7 @@ export const purchase_course = async (req, res) => {
         const response = await createData(userCourseModel, purchaseData);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
         await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $push: { courseIds: new ObjectId(response.courseId) } }, { new: true, timestamps: false })
+        await updateData(courseModel, { _id: new ObjectId(response.courseId), isDeleted: false }, { $inc: { enrolledLearners: 1 } }, {})
         return res.status(200).json(new apiResponse(200, responseMessage?.purchaseSuccess, response, {}))
     } catch (error) {
         console.log(error)

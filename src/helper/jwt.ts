@@ -18,8 +18,10 @@ export const adminJWT = async (req: Request, res: Response, next) => {
             }
             let isVerifyToken = jwt.verify(token, jwt_token_secret)
             result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false });
-            if (result?.isBlocked == true) return res.status(403).json(new apiResponse(403, 'Your account has been blocked.', {}, {}));
-            if (result?.isDeleted == false) {
+            if (!result) return res.status(401).json(new apiResponse(401, "User not found", {}, {}));
+            if (result.isBlocked == true) return res.status(403).json(new apiResponse(403, 'Your account has been blocked.', {}, {}));
+            if (result.role !== 'admin') return res.status(403).json(new apiResponse(403, 'Access denied. Admin only.', {}, {}));
+            if (result.isDeleted == false) {
                 req.headers.user = result
                 return next()
             } else {
@@ -63,6 +65,26 @@ export const userJWT = async (req: Request, res: Response, next) => {
             return res.status(410).json(new apiResponse(410, "Invalid Token", {}, {}))
         }
     } else {
-        return next()
+        return res.status(401).json(new apiResponse(401, "Unauthorized: No token provided", {}, {}))
     }
+}
+
+export const userJWTOptional = async (req: Request, res: Response, next) => {
+    let { authorization } = req.headers, result: any
+    if (authorization) {
+        try {
+            let token = authorization;
+            if (authorization.startsWith("Bearer ")) {
+                token = authorization.split(" ")[1];
+            }
+            let isVerifyToken = jwt.verify(token, jwt_token_secret);
+            result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false }).lean();
+            if (result && result.isBlocked === false && result.isDeleted === false) {
+                req.headers.user = result;
+            }
+        } catch (err) {
+            // Ignore error for optional JWT routes
+        }
+    }
+    return next();
 }

@@ -38,7 +38,7 @@ export const email_verification_mail = async (user: any, otp: any) => {
                                 </p>
 
                                 <p style="font-size:15px; color:#555; line-height:24px;">
-                                    Someone — hopefully you — is trying to log in to their <strong>Shining Sparrow</strong> account.<br><br>
+                                    Someone — hopefully you — is trying to log in to their <strong>HK DigiSkill</strong> account.<br><br>
                                     Your OTP is valid for <strong>10 minutes</strong>.<br><br>
                                     <strong>Login OTP:</strong> <span style="font-size:20px; font-weight:bold; color:#000;">${otp}</span><br><br>
                                     If this was not you, please ignore this email and secure your account.
@@ -46,10 +46,10 @@ export const email_verification_mail = async (user: any, otp: any) => {
 
                                 <p style="font-size:15px; color:#333; margin-top:30px;">
                                     Warm Regards,<br>
-                                    <strong>Team Shining Sparrow</strong><br>
-                                    Powered by <strong>Shining Sparrow</strong><br>
-                                    <a href="#" target="_blank" style="color:#1a73e8; text-decoration:none;">
-                                        www.shiningsparrow.com
+                                    <strong>Team HK DigiSkill</strong><br>
+                                    Powered by <strong>HK DigiVerse LLP</strong><br>
+                                    <a href="https://www.hkdigiskill.com" target="_blank" style="color:#1a73e8; text-decoration:none;">
+                                        www.hkdigiskill.com
                                     </a>
                                 </p>
                             </td>

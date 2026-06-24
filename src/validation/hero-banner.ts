@@ -8,6 +8,7 @@ export const addHeroBannerSchema = Joi.object().keys({
     images: Joi.array().items(Joi.string()).optional(), // For Web type
     link: Joi.string().allow('', null).optional(), // For App type
     image: Joi.string().allow('', null).optional(), // For App type
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editHeroBannerSchema = Joi.object().keys({
@@ -18,6 +19,7 @@ export const editHeroBannerSchema = Joi.object().keys({
     images: Joi.array().items(Joi.string()).optional(),
     link: Joi.string().allow('', null).optional(),
     image: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteHeroBannerSchema = Joi.object().keys({

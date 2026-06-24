@@ -8,6 +8,7 @@ export const addInstructorSchema = Joi.object().keys({
     instagram: Joi.string().allow('', null).optional(),
     facebook: Joi.string().allow('', null).optional(),
     twitter: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editInstructorSchema = Joi.object().keys({
@@ -19,6 +20,7 @@ export const editInstructorSchema = Joi.object().keys({
     instagram: Joi.string().allow('', null).optional(),
     facebook: Joi.string().allow('', null).optional(),
     twitter: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteInstructorSchema = Joi.object().keys({

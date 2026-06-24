@@ -1,15 +1,17 @@
 import express from 'express';
 import { userController } from '../controllers';
-import { adminJWT } from '../helper';
+import { adminJWT, userJWT } from '../helper';
 
 const router = express.Router();
 
 router.post('/add', userController.add_user);
 router.post('/signup', userController.user_signup);
+router.post('/purchase-intent', userController.check_purchase_intent);
 router.post('/update', adminJWT, userController.edit_user_by_id);
 router.delete('/delete/:id', adminJWT, userController.delete_user_by_id);
 router.get('/all', adminJWT, userController.get_all_user);
 router.get('/delete/all', adminJWT, userController.get_all_delete_user);
+router.get('/payments/history', userJWT, userController.get_payment_history);
 router.get('/:id', adminJWT, userController.get_user_by_id);
 
 export const userRoute = router;

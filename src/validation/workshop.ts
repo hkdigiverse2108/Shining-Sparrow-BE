@@ -8,13 +8,13 @@ export const addWorkshopSchema = Joi.object().keys({
     pdfAttach: Joi.string().allow('', null).optional(),
     workshopCurriculum: Joi.array().items(Joi.string()).optional(),
     workshopTestimonials: Joi.array().items(Joi.string()).optional(),
-    workshopFAQ: Joi.array().items(Joi.string()).optional(),
     price: Joi.number().default(0),
     mrpPrice: Joi.number().default(0),
     validFor: Joi.string().allow('', null).optional(),
     couponCode: Joi.string().allow('', null).optional(),
     language: Joi.string().allow('', null).optional(),
     duration: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editWorkshopSchema = Joi.object().keys({
@@ -26,13 +26,13 @@ export const editWorkshopSchema = Joi.object().keys({
     pdfAttach: Joi.string().allow('', null).optional(),
     workshopCurriculum: Joi.array().items(Joi.string()).optional(),
     workshopTestimonials: Joi.array().items(Joi.string()).optional(),
-    workshopFAQ: Joi.array().items(Joi.string()).optional(),
     price: Joi.number().optional(),
     mrpPrice: Joi.number().optional(),
     validFor: Joi.string().allow('', null).optional(),
     couponCode: Joi.string().allow('', null).optional(),
     language: Joi.string().allow('', null).optional(),
     duration: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteWorkshopSchema = Joi.object().keys({

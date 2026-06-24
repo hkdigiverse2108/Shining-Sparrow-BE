@@ -47,3 +47,15 @@ export const blockUnblockUserSchema = Joi.object().keys({
     isBlocked: Joi.boolean().required(),
 });
 
+export const purchaseIntentSchema = Joi.object().keys({
+    fullName: Joi.string().required(),
+    email: Joi.string().email().required(),
+    phoneNumber: Joi.string().required(),
+    courseId: Joi.string().hex().length(24).optional(),
+    workshopId: Joi.string().hex().length(24).optional(),
+    district: Joi.string().allow('', null).optional(),
+    std: Joi.string().allow('', null).optional(),
+    reachFrom: Joi.string().allow('', null).optional(),
+});
+
+
