@@ -56,6 +56,11 @@ export const get_all_workshop = async (req, res) => {
         const { page, limit, search, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
+
         if (search) {
             criteria.$or = [
                 { title: { $regex: search, $options: 'si' } },
@@ -125,6 +130,11 @@ export const get_workshop_by_id = async (req, res) => {
 
         const response = await findOneAndPopulate(workshopModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, { lean: true }, populateModels)
         if (!response || response.isDeleted) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("workshop"), {}, {}))
+
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin && response.isBlocked) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("workshop"), {}, {}))
+        }
 
         const totalLesson = await countData(workshopCurriculumModel, { workshopId: response._id, isDeleted: false });
         response.totalLesson = totalLesson;

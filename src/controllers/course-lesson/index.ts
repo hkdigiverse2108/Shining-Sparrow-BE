@@ -61,9 +61,18 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
     const completedLessonIds = new Set(completions.map(c => c.courseLessonId.toString()));
 
     // Build maps for quick lookup
-    const examByLessonId = new Map()
+    const examsByLessonId = new Map<string, any[]>()
     for (const exam of exams) {
-        examByLessonId.set(exam.courseLessonId.toString(), exam)
+        const key = exam.courseLessonId.toString()
+        if (!examsByLessonId.has(key)) {
+            examsByLessonId.set(key, [])
+        }
+        examsByLessonId.get(key)!.push(exam)
+    }
+
+    // Sort exams for each lesson by priority ascending
+    for (const [lessonId, lessonExams] of examsByLessonId.entries()) {
+        lessonExams.sort((a, b) => (a.priority || 0) - (b.priority || 0))
     }
 
     const attemptByExamId = new Map()
@@ -86,30 +95,33 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
                 // If previous lesson is locked, this lesson is also locked
                 isUnlocked = false
             } else {
-                // Check previous lesson's exam
-                const prevExam = examByLessonId.get(prevLesson._id.toString())
-                if (!prevExam) {
+                // Check previous lesson's primary exam
+                const prevExams = examsByLessonId.get(prevLesson._id.toString()) || []
+                if (prevExams.length === 0) {
                     // No exam for previous lesson → this lesson is unlocked
                     isUnlocked = true
                 } else {
+                    const prevExam = prevExams[0]
                     const prevAttempt = attemptByExamId.get(prevExam._id.toString())
                     isUnlocked = prevAttempt?.status === 'pass'
                 }
             }
         }
 
-        const currentExam = examByLessonId.get(lesson._id.toString())
-        const examId = currentExam ? currentExam._id : null
+        const currentExams = examsByLessonId.get(lesson._id.toString()) || []
+        const primaryExam = currentExams[0]
+        const examId = primaryExam ? primaryExam._id : null
+        const examIds = currentExams.map(e => e._id)
 
         let isCompleted = false
-        if (currentExam) {
-            const attempt = attemptByExamId.get(currentExam._id.toString())
+        if (currentExams.length > 0) {
+            const attempt = attemptByExamId.get(primaryExam._id.toString())
             isCompleted = attempt?.status === 'pass'
         } else {
             isCompleted = completedLessonIds.has(lesson._id.toString())
         }
 
-        result.push({ ...lesson, isUnlocked, examId, isCompleted })
+        result.push({ ...lesson, isUnlocked, examId, examIds, exams: currentExams, isCompleted })
     }
 
     return result
@@ -337,8 +349,10 @@ export const get_course_lesson_by_id = async (req, res) => {
         const populatedResponse = await courseLessonModel.findById(value.id).populate(populateModel).lean()
         if (!populatedResponse) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
 
-        const exam = await getFirstMatch(examModel, { courseLessonId: new ObjectId(value.id), isDeleted: false }, {}, {});
-        populatedResponse.examId = exam ? exam._id : null;
+        const exams = await examModel.find({ courseLessonId: new ObjectId(value.id), isDeleted: false }).sort({ priority: 1 }).lean();
+        populatedResponse.examId = exams[0] ? exams[0]._id : null;
+        populatedResponse.exams = exams;
+        populatedResponse.examIds = exams.map(e => e._id);
 
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("course lesson"), populatedResponse, {}))
     } catch (error) {

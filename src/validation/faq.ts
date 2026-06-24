@@ -19,6 +19,7 @@ export const addFaqSchema = Joi.object().keys({
     learningCatalogId: Joi.string().optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(FAQ_STATUS)),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editFaqSchema = Joi.object().keys({
@@ -28,6 +29,7 @@ export const editFaqSchema = Joi.object().keys({
     learningCatalogId: Joi.string().optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(FAQ_STATUS)).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteFaqSchema = Joi.object().keys({

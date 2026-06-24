@@ -10,6 +10,7 @@ export const addTestimonialSchema = Joi.object().keys({
     description: Joi.string().allow('', null).optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(TESTIMONIAL_TYPE)).required(),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editTestimonialSchema = Joi.object().keys({
@@ -22,6 +23,7 @@ export const editTestimonialSchema = Joi.object().keys({
     description: Joi.string().allow('', null).optional(),
     isFeatured: Joi.boolean().default(false),
     type: Joi.string().valid(...Object.values(TESTIMONIAL_TYPE)).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteTestimonialSchema = Joi.object().keys({

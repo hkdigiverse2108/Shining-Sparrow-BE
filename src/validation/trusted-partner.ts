@@ -4,6 +4,7 @@ export const addTrustedPartnerSchema = Joi.object().keys({
     image: Joi.string().allow('', null).optional(),
     name: Joi.string().required(),
     description: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editTrustedPartnerSchema = Joi.object().keys({
@@ -11,6 +12,7 @@ export const editTrustedPartnerSchema = Joi.object().keys({
     image: Joi.string().allow('', null).optional(),
     name: Joi.string().required(),
     description: Joi.string().allow('', null).optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteTrustedPartnerSchema = Joi.object().keys({

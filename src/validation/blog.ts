@@ -10,6 +10,7 @@ export const addBlogSchema = Joi.object().keys({
     content: Joi.string().required(),
     category: Joi.string().required(),
     isFeatured: Joi.boolean().default(false),
+    isBlocked: Joi.boolean().default(false).optional(),
 })
 
 export const editBlogSchema = Joi.object().keys({
@@ -23,6 +24,7 @@ export const editBlogSchema = Joi.object().keys({
     content: Joi.string().required(),
     category: Joi.string().required(),
     isFeatured: Joi.boolean().default(false),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteBlogSchema = Joi.object().keys({

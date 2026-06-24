@@ -9,6 +9,7 @@ const examSchema = new mongoose.Schema({
     passingMarks: { type: Number, required: true },
     totalMarks: { type: Number, required: true },
     timeLimit: { type: Number, required: true },
+    priority: { type: Number, default: 0 },
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });

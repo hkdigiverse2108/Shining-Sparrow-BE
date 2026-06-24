@@ -16,6 +16,7 @@ export const addCourseSchema = Joi.object().keys({
     classCompleted: Joi.number().default(0),
     satisfactionRate: Joi.number().default(0),
     accessDurationDays: Joi.number().allow(null).optional().default(null),
+    isBlocked: Joi.boolean().default(false).optional(),
 });
 
 export const editCourseSchema = Joi.object().keys({
@@ -35,6 +36,7 @@ export const editCourseSchema = Joi.object().keys({
     classCompleted: Joi.number().optional(),
     satisfactionRate: Joi.number().optional(),
     accessDurationDays: Joi.number().allow(null).optional(),
+    isBlocked: Joi.boolean().optional(),
 });
 
 export const deleteCourseSchema = Joi.object().keys({

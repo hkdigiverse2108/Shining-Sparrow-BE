@@ -179,17 +179,27 @@ export const create_room = async (req, res) => {
         const { user } = req.headers;
         if (!user) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}));
 
+        const { recipientId } = req.body;
         const isAdmin = user.role === USER_ROLES.ADMIN;
 
-        // Find admin user
-        const adminUser = await getFirstMatch(userModel, { role: USER_ROLES.ADMIN, isDeleted: false }, {}, {});
-        if (!adminUser) return res.status(404).json(new apiResponse(404, "Admin not found", {}, {}));
+        let targetUser;
 
-        // Check if a personal room already exists between this user and admin
+        if (isAdmin) {
+            // Admin is creating a room: target is the recipientId (student)
+            if (!recipientId) return res.status(400).json(new apiResponse(400, "Recipient ID is required", {}, {}));
+            targetUser = await getFirstMatch(userModel, { _id: new ObjectId(recipientId), isDeleted: false }, {}, {});
+            if (!targetUser) return res.status(404).json(new apiResponse(404, "Student not found", {}, {}));
+        } else {
+            // Student is creating a room: target is the adminUser (first admin)
+            targetUser = await getFirstMatch(userModel, { role: USER_ROLES.ADMIN, isDeleted: false }, {}, {});
+            if (!targetUser) return res.status(404).json(new apiResponse(404, "Admin not found", {}, {}));
+        }
+
+        // Check if a personal room already exists between this user and targetUser
         const existingRoom = await getFirstMatch(chatRoomModel, {
             type: 'personal',
             isDeleted: false,
-            participants: { $all: [new ObjectId(user._id), new ObjectId(adminUser._id)] },
+            participants: { $all: [new ObjectId(user._id), new ObjectId(targetUser._id)] },
         }, {}, {});
 
         if (existingRoom) {
@@ -199,7 +209,7 @@ export const create_room = async (req, res) => {
 
         const newRoom = await createData(chatRoomModel, {
             type: 'personal',
-            participants: [new ObjectId(user._id), new ObjectId(adminUser._id)],
+            participants: [new ObjectId(user._id), new ObjectId(targetUser._id)],
             createdBy: new ObjectId(user._id),
         });
 
@@ -208,7 +218,7 @@ export const create_room = async (req, res) => {
         // Notify via Socket.io and join participants to the room
         const ioInstance = req.app.get('io');
         if (ioInstance) {
-            const participantsIds = [user._id.toString(), adminUser._id.toString()];
+            const participantsIds = [user._id.toString(), targetUser._id.toString()];
             participantsIds.forEach(pId => {
                 const sockets = ioInstance.sockets.adapter.rooms.get(pId);
                 if (sockets) {
@@ -232,9 +242,12 @@ export const create_room = async (req, res) => {
                 }
             }
 
-            // Emit to adminUser and user, plus all other admins
+            // Emit to targetUser and user, plus all other admins
             ioInstance.to('admins').emit('room_created', { room: populatedRoom });
             ioInstance.to(user._id.toString()).emit('room_created', { room: populatedRoom });
+            if (!isAdmin) {
+                ioInstance.to(targetUser._id.toString()).emit('room_created', { room: populatedRoom });
+            }
         }
 
         return res.status(200).json(new apiResponse(200, "Room created", { room: populatedRoom }, {}));

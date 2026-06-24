@@ -68,3 +68,23 @@ export const userJWT = async (req: Request, res: Response, next) => {
         return res.status(401).json(new apiResponse(401, "Unauthorized: No token provided", {}, {}))
     }
 }
+
+export const userJWTOptional = async (req: Request, res: Response, next) => {
+    let { authorization } = req.headers, result: any
+    if (authorization) {
+        try {
+            let token = authorization;
+            if (authorization.startsWith("Bearer ")) {
+                token = authorization.split(" ")[1];
+            }
+            let isVerifyToken = jwt.verify(token, jwt_token_secret);
+            result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false }).lean();
+            if (result && result.isBlocked === false && result.isDeleted === false) {
+                req.headers.user = result;
+            }
+        } catch (err) {
+            // Ignore error for optional JWT routes
+        }
+    }
+    return next();
+}
