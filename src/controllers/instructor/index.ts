@@ -1,4 +1,4 @@
-import { apiResponse } from "../../common";
+import { apiResponse, USER_ROLES } from "../../common";
 import { instructorModel } from "../../database";
 import { countData, createData, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addInstructorSchema, editInstructorSchema, deleteInstructorSchema, getInstructorSchema } from "../../validation";
@@ -51,9 +51,15 @@ export const delete_instructor_by_id = async (req, res) => {
 
 export const get_all_instructors = async (req, res) => {
     reqInfo(req)
+    let { user } = req.headers
     try {
         const { page, limit, search, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [
@@ -90,11 +96,16 @@ export const get_all_instructors = async (req, res) => {
 
 export const get_instructor_by_id = async (req, res) => {
     reqInfo(req)
+    let { user } = req.headers
     try {
         const { error, value } = getInstructorSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
         const response = await getFirstMatch(instructorModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("instructor"), {}, {}))
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin && response.isBlocked) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("instructor"), {}, {}))
+        }
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("instructor"), response, {}))
     } catch (error) {
         console.log(error)

@@ -9,6 +9,7 @@ export const addQuestionSchema = Joi.object().keys({
     correctAnswer: Joi.string().required(),
     score: Joi.number().default(1),
     priority: Joi.number().default(0),
+    isBlocked: Joi.boolean().default(false),
 })
 
 export const editQuestionSchema = Joi.object().keys({
@@ -21,6 +22,7 @@ export const editQuestionSchema = Joi.object().keys({
     correctAnswer: Joi.string().optional(),
     score: Joi.number().optional(),
     priority: Joi.number().optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteQuestionSchema = Joi.object().keys({

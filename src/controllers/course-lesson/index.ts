@@ -235,8 +235,14 @@ export const delete_course_lesson_by_id = async (req, res) => {
 export const get_all_course_lessons = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { page, limit, search, courseId, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [
@@ -291,12 +297,15 @@ export const get_all_course_lessons = async (req, res) => {
 export const get_course_lesson_by_id = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { error, value } = getCourseLessonSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
         const populateModel = { path: 'courseId', select: 'name description' };
         const response = await getFirstMatch(courseLessonModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+        if (!isAdmin && response.isBlocked) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
 
         // Check if this lesson is locked for the user, and verify access permissions
         const userId = req.headers.user?._id || null

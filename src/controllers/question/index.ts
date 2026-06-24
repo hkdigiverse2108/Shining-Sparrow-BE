@@ -1,4 +1,4 @@
-import { apiResponse } from "../../common";
+import { apiResponse, USER_ROLES } from "../../common";
 import { questionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, reqInfo, responseMessage, updateData } from "../../helper";
 import { addQuestionSchema, editQuestionSchema, deleteQuestionSchema } from "../../validation";
@@ -56,8 +56,14 @@ export const delete_question_by_id = async (req, res) => {
 export const get_all_questions = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { page, limit, search, courseId, questionType } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [

@@ -43,11 +43,6 @@ export const getUserSchema = Joi.object().keys({
     id: Joi.string().hex().length(24).required(),
 });
 
-export const blockUnblockUserSchema = Joi.object().keys({
-    userId: Joi.string().hex().length(24).required(),
-    isBlocked: Joi.boolean().required(),
-});
-
 export const purchaseIntentSchema = Joi.object().keys({
     fullName: Joi.string().required(),
     email: Joi.string().email().required(),

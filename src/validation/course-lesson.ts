@@ -11,6 +11,7 @@ export const addCourseLessonSchema = Joi.object().keys({
     priority: Joi.number().optional(),
     practiceMaterial: Joi.string().allow('', null).optional(),
     lessonLock: Joi.boolean().default(false),
+    isBlocked: Joi.boolean().default(false),
 })
 
 export const editCourseLessonSchema = Joi.object().keys({
@@ -25,6 +26,7 @@ export const editCourseLessonSchema = Joi.object().keys({
     priority: Joi.number().optional(),
     practiceMaterial: Joi.string().allow('', null).optional(),
     lessonLock: Joi.boolean().optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteCourseLessonSchema = Joi.object().keys({
