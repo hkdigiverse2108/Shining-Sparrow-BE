@@ -1,4 +1,4 @@
-import { apiResponse } from "../../common";
+import { apiResponse, USER_ROLES } from "../../common";
 import { testimonialModel } from "../../database";
 import { aggregateData, countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addTestimonialSchema, editTestimonialSchema, deleteTestimonialSchema, getTestimonialSchema } from "../../validation";
@@ -57,9 +57,15 @@ export const delete_testimonial_by_id = async (req, res) => {
 
 export const get_all_testimonial = async (req, res) => {
     reqInfo(req)
+    let { user } = req.headers
     try {
         const { page, limit, search, startDate, endDate, type, isFeatured, learningCatalogFilter } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [
@@ -110,11 +116,16 @@ export const get_all_testimonial = async (req, res) => {
 
 export const get_testimonial_by_id = async (req, res) => {
     reqInfo(req)
+    let { user } = req.headers
     try {
         const { error, value } = getTestimonialSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
         const response = await getFirstMatch(testimonialModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("testimonial"), {}, {}))
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin && response.isBlocked) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("testimonial"), {}, {}))
+        }
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("testimonial"), response, {}))
     } catch (error) {
         console.log(error)
@@ -124,9 +135,15 @@ export const get_testimonial_by_id = async (req, res) => {
 
 export const get_all_testimonial_rating = async (req, res) => {
     reqInfo(req)
+    let { user } = req.headers
     try {
         const { typeFilter, learningCatalogFilter } = req.query
         const match: any = { isDeleted: false }
+
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
+        if (!isAdmin) {
+            match.isBlocked = false;
+        }
 
         if (typeFilter) {
             match.type = typeFilter

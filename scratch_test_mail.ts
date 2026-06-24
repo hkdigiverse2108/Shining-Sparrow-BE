@@ -1,39 +1,16 @@
-import nodemailer from 'nodemailer';
-import { config } from './config';
-
-const mail = 'pramit6515@gmail.com';
-const password = 'iehy rywb ueal gapl';
-
-const option = {
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: mail,
-        pass: password
-    }
-};
-
-const transPorter = nodemailer.createTransport(option);
+import { send_forgot_otr_mail } from './src/helper/mail';
 
 const test = async () => {
     try {
-        const mailOptions = {
-            from: mail,
-            to: 'pramit6515@gmail.com', // send to self for testing
-            subject: "Test Mail from Shining Sparrow",
-            text: "SMTP test is successful!"
+        const mockUser = {
+            email: 'pramit6515@gmail.com',
+            fullName: 'Test Student',
+            phoneNumber: '+919876543210'
         };
-
-        transPorter.sendMail(mailOptions, function (err, data) {
-            if (err) {
-                console.error("Nodemailer error:", err);
-            } else {
-                console.log("Email sent successfully! Response:", data);
-            }
-        });
+        const res = await send_forgot_otr_mail(mockUser, '87654321');
+        console.log("Forgot OTR Email retrieval test result:", res);
     } catch (e) {
-        console.error("Error in test:", e);
+        console.error("Error in forgot OTR mail retrieval test:", e);
     }
 };
 

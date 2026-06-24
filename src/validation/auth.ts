@@ -51,6 +51,10 @@ export const forgotPasswordSchema = Joi.object().keys({
     email: Joi.string().email().required(),
 });
 
+export const forgotOtrSchema = Joi.object().keys({
+    email: Joi.string().email().required(),
+});
+
 export const changePasswordSchema = Joi.object().keys({
     email: Joi.string().email().required(),
     oldPassword: Joi.string().required(),
@@ -66,6 +70,7 @@ export const updateProfileSchema = Joi.object().keys({
     std: Joi.string().allow('', null).optional(),
     reachFrom: Joi.string().allow('', null).optional(),
     schoolName: Joi.string().allow('', null).optional(),
+    address: Joi.string().allow('', null).optional(),
 });
 
 export const deleteUserAccountSchema = Joi.object().keys({

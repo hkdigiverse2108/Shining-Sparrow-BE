@@ -29,6 +29,7 @@ export const editUserSchema = Joi.object().keys({
     std: Joi.string().allow('', null).optional(),
     reachFrom: Joi.string().allow('', null).optional(),
     schoolName: Joi.string().allow('', null).optional(),
+    address: Joi.string().allow('', null).optional(),
     agreeTerms: Joi.boolean().optional(),
     isEmailVerified: Joi.boolean().optional(),
     isBlocked: Joi.boolean().optional(),
@@ -40,11 +41,6 @@ export const deleteUserSchema = Joi.object().keys({
 
 export const getUserSchema = Joi.object().keys({
     id: Joi.string().hex().length(24).required(),
-});
-
-export const blockUnblockUserSchema = Joi.object().keys({
-    userId: Joi.string().hex().length(24).required(),
-    isBlocked: Joi.boolean().required(),
 });
 
 export const purchaseIntentSchema = Joi.object().keys({

@@ -8,6 +8,7 @@ export const sendMessageSchema = Joi.object().keys({
         type: Joi.string().valid('image', 'pdf', 'doc').required(),
         name: Joi.string().required(),
     }).optional(),
+    replyTo: Joi.string().hex().length(24).optional().allow(null),
 }).or('message', 'attachment');
 
 export const getMessagesSchema = Joi.object().keys({

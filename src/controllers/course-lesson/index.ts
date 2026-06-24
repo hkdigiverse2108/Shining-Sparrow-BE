@@ -95,28 +95,42 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
                 // If previous lesson is locked, this lesson is also locked
                 isUnlocked = false
             } else {
-                // Check previous lesson's primary exam
+                // Check previous lesson's exams
                 const prevExams = examsByLessonId.get(prevLesson._id.toString()) || []
                 if (prevExams.length === 0) {
                     // No exam for previous lesson → this lesson is unlocked
                     isUnlocked = true
                 } else {
-                    const prevExam = prevExams[0]
-                    const prevAttempt = attemptByExamId.get(prevExam._id.toString())
-                    isUnlocked = prevAttempt?.status === 'pass'
+                    // Check if ALL exams of the previous lesson are passed
+                    isUnlocked = prevExams.every(exam => {
+                        const attempt = attemptByExamId.get(exam._id.toString());
+                        return attempt?.status === 'pass';
+                    });
                 }
             }
         }
 
-        const currentExams = examsByLessonId.get(lesson._id.toString()) || []
+        const rawExams = examsByLessonId.get(lesson._id.toString()) || []
+        const currentExams = rawExams.map(exam => {
+            const attempt = attemptByExamId.get(exam._id.toString());
+            return {
+                ...exam,
+                attempt: attempt ? {
+                    status: attempt.status,
+                    obtainedMarks: attempt.obtainedMarks,
+                    attemptCount: attempt.attemptCount,
+                    timeTaken: attempt.timeTaken
+                } : null
+            };
+        });
+
         const primaryExam = currentExams[0]
         const examId = primaryExam ? primaryExam._id : null
         const examIds = currentExams.map(e => e._id)
 
         let isCompleted = false
         if (currentExams.length > 0) {
-            const attempt = attemptByExamId.get(primaryExam._id.toString())
-            isCompleted = attempt?.status === 'pass'
+            isCompleted = currentExams.every(exam => exam.attempt?.status === 'pass');
         } else {
             isCompleted = completedLessonIds.has(lesson._id.toString())
         }
@@ -124,7 +138,7 @@ export const computeLessonUnlockStatus = async (lessons: any[], userId: string |
         result.push({ ...lesson, isUnlocked, examId, examIds, exams: currentExams, isCompleted })
     }
 
-    return result
+    return result;
 }
 
 export const getLessonIdsForCourse = async (courseId: any): Promise<any[]> => {
@@ -221,8 +235,14 @@ export const delete_course_lesson_by_id = async (req, res) => {
 export const get_all_course_lessons = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { page, limit, search, courseId, startDate, endDate } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [
@@ -277,12 +297,15 @@ export const get_all_course_lessons = async (req, res) => {
 export const get_course_lesson_by_id = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { error, value } = getCourseLessonSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
         const populateModel = { path: 'courseId', select: 'name description' };
         const response = await getFirstMatch(courseLessonModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
+        if (!isAdmin && response.isBlocked) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course lesson"), {}, {}))
 
         // Check if this lesson is locked for the user, and verify access permissions
         const userId = req.headers.user?._id || null

@@ -21,6 +21,7 @@ export const addExamSchema = Joi.object().keys({
     totalMarks: Joi.number().required(),
     timeLimit: Joi.number().required(),
     priority: Joi.number().default(0).optional(),
+    isBlocked: Joi.boolean().default(false),
 })
 
 export const editExamSchema = Joi.object().keys({
@@ -35,6 +36,7 @@ export const editExamSchema = Joi.object().keys({
     totalMarks: Joi.number().optional(),
     timeLimit: Joi.number().optional(),
     priority: Joi.number().optional(),
+    isBlocked: Joi.boolean().optional(),
 })
 
 export const deleteExamSchema = Joi.object().keys({

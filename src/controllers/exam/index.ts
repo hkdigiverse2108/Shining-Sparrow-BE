@@ -1,4 +1,4 @@
-import { apiResponse } from "../../common";
+import { apiResponse, USER_ROLES } from "../../common";
 import { examModel, questionModel, userExamAttemptModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addExamSchema, editExamSchema, deleteExamSchema, getExamSchema, submitExamSchema } from "../../validation";
@@ -112,8 +112,14 @@ export const delete_exam_by_id = async (req, res) => {
 export const get_all_exams = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { page, limit, search, courseId, courseLessonId } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
+
+        if (!isAdmin) {
+            criteria.isBlocked = false;
+        }
 
         if (search) {
             criteria.$or = [
@@ -159,6 +165,8 @@ export const get_all_exams = async (req, res) => {
 export const get_exam_by_id = async (req, res) => {
     reqInfo(req)
     try {
+        const user = req.headers.user
+        const isAdmin = user && user.role === USER_ROLES.ADMIN;
         const { error, value } = getExamSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
@@ -169,6 +177,7 @@ export const get_exam_by_id = async (req, res) => {
         ];
         const response = await examModel.findOne({ _id: new ObjectId(value.id), isDeleted: false }).populate(populateModel).lean()
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("exam"), {}, {}))
+        if (!isAdmin && response.isBlocked) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("exam"), {}, {}))
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("exam"), response, {}))
     } catch (error) {
         console.log(error)
