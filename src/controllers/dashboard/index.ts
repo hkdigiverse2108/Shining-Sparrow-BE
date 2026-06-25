@@ -1,4 +1,4 @@
-import { apiResponse } from "../../common";
+import { apiResponse, USER_ROLES } from "../../common";
 import { courseModel, userCourseModel, userModel, workshopModel, workshopPaymentModel } from "../../database";
 import { reqInfo, responseMessage } from "../../helper";
 
@@ -24,7 +24,7 @@ export const dashboard = async (req, res) => {
 
 export const getDashboardData = async () => {
     try {
-        const totalStudents = await userModel.countDocuments({ isDeleted: false });
+        const totalStudents = await userModel.countDocuments({ role: USER_ROLES.USER, isDeleted: false });
         const totalCourses = await courseModel.countDocuments({ isDeleted: false });
         const totalWorkshops = await workshopModel.countDocuments({ isDeleted: false });
         const workshopPurchaseCount = await workshopPaymentModel.countDocuments({ isDeleted: false })
