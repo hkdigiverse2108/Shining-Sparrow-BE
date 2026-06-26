@@ -257,9 +257,22 @@ export const get_my_courses = async (req, res) => {
 
         if (user?.role === USER_ROLES.USER) {
             criteria.userId = new ObjectId(user._id)
+        } else if (req.query.userId) {
+            criteria.userId = new ObjectId(req.query.userId)
         }
 
-        let courses = await getData(courseModel, { isDeleted: false }, {}, {})
+        let courseCriteria: any = { isDeleted: false };
+        if (req.query.courseId) {
+            courseCriteria._id = new ObjectId(req.query.courseId);
+        }
+        if (req.query.minAmount) {
+            courseCriteria.price = { ...courseCriteria.price, $gte: Number(req.query.minAmount) };
+        }
+        if (req.query.maxAmount) {
+            courseCriteria.price = { ...courseCriteria.price, $lte: Number(req.query.maxAmount) };
+        }
+
+        let courses = await getData(courseModel, courseCriteria, {}, {})
         criteria.courseId = { $in: courses.map(e => new ObjectId(e._id)) }
 
         options.sort = { createdAt: -1 }

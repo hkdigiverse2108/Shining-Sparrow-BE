@@ -196,10 +196,23 @@ export const get_my_workshops = async (req, res) => {
     try {
         if (user.role === USER_ROLES.USER) {
             criteria.userId = new ObjectId(user._id)
+        } else if (req.query.userId) {
+            criteria.userId = new ObjectId(req.query.userId)
         }
 
-        let workshops = await getData(workshopModel, { isDeleted: false }, {}, {})
+        let workshopCriteria: any = { isDeleted: false };
+        if (req.query.workshopId) {
+            workshopCriteria._id = new ObjectId(req.query.workshopId);
+        }
+        let workshops = await getData(workshopModel, workshopCriteria, {}, {})
         criteria.workshopId = { $in: workshops.map(e => new ObjectId(e._id)) }
+
+        if (req.query.minAmount) {
+            criteria.finalAmount = { ...criteria.finalAmount, $gte: Number(req.query.minAmount) };
+        }
+        if (req.query.maxAmount) {
+            criteria.finalAmount = { ...criteria.finalAmount, $lte: Number(req.query.maxAmount) };
+        }
 
         options.sort = { createdAt: -1 }
         if (page && limit) {
