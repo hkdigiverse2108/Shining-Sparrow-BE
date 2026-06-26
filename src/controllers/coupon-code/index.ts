@@ -60,7 +60,7 @@ export const delete_coupon_code_by_id = async (req, res) => {
 export const get_all_coupon_codes = async (req, res) => {
     reqInfo(req)
     try {
-        const { page, limit, search, startDateFilter, endDateFilter, statusFilter } = req.query
+        const { page, limit, search, startDateFilter, endDateFilter, statusFilter, discountType, appliesTo, validStartDate, validEndDate, usageStatus, status, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         if (search) {
@@ -71,6 +71,43 @@ export const get_all_coupon_codes = async (req, res) => {
         }
         if (statusFilter) {
             criteria.status = statusFilter
+        }
+        if (status) {
+            criteria.status = status
+        }
+        if (discountType) {
+            criteria.discountType = discountType
+        }
+        if (appliesTo) {
+            criteria.appliesTo = appliesTo
+        }
+        if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true'
+        }
+        if (validStartDate) {
+            criteria.startDate = { $gte: new Date(validStartDate) }
+        }
+        if (validEndDate) {
+            criteria.endDate = { $lte: new Date(validEndDate) }
+        }
+        if (usageStatus) {
+            if (usageStatus === 'valid') {
+                criteria.$and = criteria.$and || [];
+                criteria.$and.push({
+                    $or: [
+                        { usageLimit: null },
+                        { $expr: { $lt: ["$usedCount", "$usageLimit"] } }
+                    ]
+                });
+            } else if (usageStatus === 'depleted') {
+                criteria.$and = criteria.$and || [];
+                criteria.$and.push({
+                    usageLimit: { $ne: null }
+                });
+                criteria.$and.push({
+                    $expr: { $gte: ["$usedCount", "$usageLimit"] }
+                });
+            }
         }
         if (startDateFilter && endDateFilter) {
             criteria.createdAt = { $gte: new Date(startDateFilter), $lte: new Date(endDateFilter) }

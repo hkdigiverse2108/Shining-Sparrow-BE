@@ -52,7 +52,7 @@ export const delete_get_in_touch_by_id = async (req, res) => {
 export const get_all_get_in_touch = async (req, res) => {
     reqInfo(req)
     try {
-        const { page, limit, search, startDate, endDate, isRead } = req.query
+        const { page, limit, search, startDate, endDate, isRead, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         if (search) {
@@ -65,6 +65,9 @@ export const get_all_get_in_touch = async (req, res) => {
         }
         if (isRead !== undefined) {
             criteria.isRead = isRead === 'true'
+        }
+        if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true'
         }
         if (startDate && endDate) {
             criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }

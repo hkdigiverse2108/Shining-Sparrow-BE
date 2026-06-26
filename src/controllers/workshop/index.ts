@@ -53,12 +53,28 @@ export const get_all_workshop = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate } = req.query
+        const { page, limit, search, startDate, endDate, minPrice, maxPrice, language, couponCode, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
+        }
+
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            criteria.price = {};
+            if (minPrice !== undefined) criteria.price.$gte = Number(minPrice);
+            if (maxPrice !== undefined) criteria.price.$lte = Number(maxPrice);
+        }
+
+        if (language) {
+            criteria.language = language;
+        }
+
+        if (couponCode) {
+            criteria.couponCode = couponCode;
         }
 
         if (search) {
