@@ -81,7 +81,7 @@ export const otp_verification = async (req, res) => {
             let response: any
             response = await updateData(userModel, { _id: new ObjectId(data?._id) }, { otp: null, isEmailVerified: true }, { new: true })
 
-            let expiresIn = { expiresIn: '24h' };
+            let expiresIn = { expiresIn: '365d' };
 
             const token = await generateToken({
                 _id: response._id,
@@ -140,7 +140,7 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             _id: response._id,
             status: "Login",
             generatedOn: (new Date().getTime())
-        }, { expiresIn: '24h' })
+        }, { expiresIn: '365d' })
 
         const result = {
             isEmailVerified: response?.isEmailVerified,

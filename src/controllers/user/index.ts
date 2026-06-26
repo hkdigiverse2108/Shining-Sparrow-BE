@@ -60,7 +60,7 @@ export const user_signup = async (req, res) => {
             _id: response._id,
             status: "Login",
             generatedOn: (new Date().getTime())
-        }, { expiresIn: '24h' })
+        }, { expiresIn: '365d' })
 
         let newResponse = { ...response?._doc ? response?._doc : response, token }
 
@@ -329,7 +329,7 @@ export const check_purchase_intent = async (req, res) => {
                 _id: user._id,
                 status: "Login",
                 generatedOn: (new Date().getTime())
-            }, { expiresIn: '24h' });
+            }, { expiresIn: '365d' });
 
             const result = { ...user?._doc ? user?._doc : user, token };
             return res.status(200).json(new apiResponse(200, "Welcome back! Proceeding to purchase...", result, {}));
@@ -370,7 +370,7 @@ export const check_purchase_intent = async (req, res) => {
                 _id: newUser._id,
                 status: "Login",
                 generatedOn: (new Date().getTime())
-            }, { expiresIn: '24h' });
+            }, { expiresIn: '365d' });
 
             const result = { ...newUser?._doc ? newUser?._doc : newUser, token };
             return res.status(200).json(new apiResponse(200, "Account registered successfully! Proceeding to purchase...", result, {}));

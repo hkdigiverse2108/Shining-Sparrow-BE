@@ -1,4 +1,4 @@
-import { apiResponse, USER_ROLES } from "../../common";
+import { apiResponse, PAYMENT_STATUS, USER_ROLES } from "../../common";
 import { courseModel, userCourseModel, userModel, workshopModel, workshopPaymentModel } from "../../database";
 import { reqInfo, responseMessage } from "../../helper";
 
@@ -35,5 +35,132 @@ export const getDashboardData = async () => {
 
     } catch (error) {
         console.log("error:", error);
+    }
+};
+
+export const analytics = async (req, res) => {
+    reqInfo(req)
+    try {
+        const now = new Date();
+        const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+
+        // Generate labels for the last 12 months
+        const monthLabels: { month: number; year: number; label: string }[] = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+            monthLabels.push({
+                month: d.getMonth() + 1,
+                year: d.getFullYear(),
+                label: d.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+            });
+        }
+
+        // --- Workshop Revenue Aggregation ---
+        const workshopAgg = await workshopPaymentModel.aggregate([
+            {
+                $match: {
+                    paymentStatus: PAYMENT_STATUS.COMPLETED,
+                    isDeleted: false,
+                    createdAt: { $gte: twelveMonthsAgo },
+                },
+            },
+            {
+                $group: {
+                    _id: {
+                        month: { $month: '$createdAt' },
+                        year: { $year: '$createdAt' },
+                    },
+                    revenue: { $sum: { $ifNull: ['$finalAmount', '$amount'] } },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        // --- Course Revenue Aggregation ---
+        // user-course doesn't store amount, so we join with the course model
+        const courseAgg = await userCourseModel.aggregate([
+            {
+                $match: {
+                    paymentStatus: PAYMENT_STATUS.COMPLETED,
+                    isDeleted: false,
+                    createdAt: { $gte: twelveMonthsAgo },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'courses',
+                    localField: 'courseId',
+                    foreignField: '_id',
+                    as: 'course',
+                },
+            },
+            { $unwind: { path: '$course', preserveNullAndEmptyArrays: true } },
+            {
+                $group: {
+                    _id: {
+                        month: { $month: '$createdAt' },
+                        year: { $year: '$createdAt' },
+                    },
+                    revenue: { $sum: { $ifNull: ['$course.price', 0] } },
+                    count: { $sum: 1 },
+                },
+            },
+        ]);
+
+        // Build lookup maps
+        const workshopMap: Record<string, { revenue: number; count: number }> = {};
+        workshopAgg.forEach((item) => {
+            workshopMap[`${item._id.year}-${item._id.month}`] = {
+                revenue: item.revenue || 0,
+                count: item.count || 0,
+            };
+        });
+
+        const courseMap: Record<string, { revenue: number; count: number }> = {};
+        courseAgg.forEach((item) => {
+            courseMap[`${item._id.year}-${item._id.month}`] = {
+                revenue: item.revenue || 0,
+                count: item.count || 0,
+            };
+        });
+
+        // Merge into monthly breakdown
+        let totalCourseRevenue = 0;
+        let totalWorkshopRevenue = 0;
+
+        const monthly = monthLabels.map(({ month, year, label }) => {
+            const key = `${year}-${month}`;
+            const ws = workshopMap[key] || { revenue: 0, count: 0 };
+            const cs = courseMap[key] || { revenue: 0, count: 0 };
+
+            totalCourseRevenue += cs.revenue;
+            totalWorkshopRevenue += ws.revenue;
+
+            return {
+                month,
+                year,
+                label,
+                courseRevenue: cs.revenue,
+                workshopRevenue: ws.revenue,
+                totalRevenue: cs.revenue + ws.revenue,
+                coursePurchases: cs.count,
+                workshopPurchases: ws.count,
+                totalPurchases: cs.count + ws.count,
+            };
+        });
+
+        const result = {
+            monthly,
+            summary: {
+                totalCourseRevenue,
+                totalWorkshopRevenue,
+                grandTotalRevenue: totalCourseRevenue + totalWorkshopRevenue,
+            },
+        };
+
+        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("analytics"), result, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
     }
 };
