@@ -96,12 +96,30 @@ export const get_all_course = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate } = req.query
+        const { page, limit, search, startDate, endDate, minPrice, maxPrice, language, isBlocked, minAccessDurationDays, maxAccessDurationDays } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
+        }
+
+        if (minPrice !== undefined || maxPrice !== undefined) {
+            criteria.price = {};
+            if (minPrice !== undefined) criteria.price.$gte = Number(minPrice);
+            if (maxPrice !== undefined) criteria.price.$lte = Number(maxPrice);
+        }
+
+        if (language) {
+            criteria.language = language;
+        }
+
+        if (minAccessDurationDays !== undefined || maxAccessDurationDays !== undefined) {
+            criteria.accessDurationDays = {};
+            if (minAccessDurationDays !== undefined) criteria.accessDurationDays.$gte = Number(minAccessDurationDays);
+            if (maxAccessDurationDays !== undefined) criteria.accessDurationDays.$lte = Number(maxAccessDurationDays);
         }
 
         if (search) {

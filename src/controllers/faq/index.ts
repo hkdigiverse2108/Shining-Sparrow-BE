@@ -53,12 +53,14 @@ export const get_all_faq = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate, type, isFeatured, learningCatalogFilter } = req.query
+        const { page, limit, search, startDate, endDate, type, isFeatured, learningCatalogFilter, learningCatalogId, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
         }
 
         if (search) {
@@ -78,6 +80,8 @@ export const get_all_faq = async (req, res) => {
 
         if (learningCatalogFilter) {
             criteria.learningCatalogId = { $in: [new ObjectId(learningCatalogFilter), null] }
+        } else if (learningCatalogId) {
+            criteria.learningCatalogId = new ObjectId(learningCatalogId)
         }
 
         if (isFeatured !== undefined) {

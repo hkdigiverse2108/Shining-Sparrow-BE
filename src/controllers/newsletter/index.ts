@@ -40,7 +40,7 @@ export const delete_newsletter_by_id = async (req, res) => {
 export const get_all_newsletter = async (req, res) => {
     reqInfo(req)
     try {
-        const { page, limit, search, startDate, endDate } = req.query
+        const { page, limit, search, startDate, endDate, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         if (search) {
@@ -48,8 +48,11 @@ export const get_all_newsletter = async (req, res) => {
                 { email: { $regex: search, $options: 'si' } },
             ]
         }
+        if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true'
+        }
         if (startDate && endDate) {
-            criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
+            criteria.dateTime = { $gte: new Date(startDate), $lte: new Date(endDate) }
         }
         options.sort = { createdAt: -1 }
         if (page && limit) {

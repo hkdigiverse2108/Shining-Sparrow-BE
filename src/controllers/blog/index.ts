@@ -53,12 +53,26 @@ export const get_all_blog = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate } = req.query
+        const { page, limit, search, startDate, endDate, category, isFeatured, author, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
+        }
+
+        if (category) {
+            criteria.category = category;
+        }
+
+        if (isFeatured !== undefined) {
+            criteria.isFeatured = isFeatured === 'true';
+        }
+
+        if (author) {
+            criteria.author = author;
         }
 
         if (search) {

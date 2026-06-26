@@ -53,12 +53,22 @@ export const get_all_gallery = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate } = req.query
+        const { page, limit, search, startDate, endDate, hasImages, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
+        }
+
+        if (hasImages !== undefined) {
+            if (hasImages === 'true') {
+                criteria.images = { $not: { $size: 0 } };
+            } else if (hasImages === 'false') {
+                criteria.images = { $size: 0 };
+            }
         }
 
         if (search) {

@@ -106,7 +106,7 @@ export const delete_user_by_id = async (req, res) => {
 export const get_all_user = async (req, res) => {
     reqInfo(req)
     try {
-        const { page, limit, search, startDate, endDate, activeFilter, deleteFilter } = req.query
+        const { page, limit, search, startDate, endDate, activeFilter, isBlocked, deleteFilter, role, isEmailVerified, courseIds, workshopIds } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         if (search) {
@@ -117,11 +117,21 @@ export const get_all_user = async (req, res) => {
             ]
         }
 
-        criteria.role = USER_ROLES.USER
+        criteria.role = role ? role : USER_ROLES.USER
 
         if (activeFilter !== undefined) criteria.isBlocked = activeFilter === 'true'
-
+        if (isBlocked !== undefined) criteria.isBlocked = isBlocked === 'true'
+        if (isEmailVerified !== undefined) criteria.isEmailVerified = isEmailVerified === 'true'
         if (deleteFilter) criteria.isDeleted = Boolean(deleteFilter)
+
+        if (courseIds) {
+            const cIds = Array.isArray(courseIds) ? courseIds : (courseIds as string).split(',').map(id => id.trim());
+            criteria.courseIds = { $in: cIds.map(id => new ObjectId(id)) };
+        }
+        if (workshopIds) {
+            const wIds = Array.isArray(workshopIds) ? workshopIds : (workshopIds as string).split(',').map(id => id.trim());
+            criteria.workshopIds = { $in: wIds.map(id => new ObjectId(id)) };
+        }
 
         if (startDate && endDate) criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
 

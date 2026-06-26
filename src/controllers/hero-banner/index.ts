@@ -53,12 +53,14 @@ export const get_all_hero_banner = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate, type } = req.query
+        const { page, limit, search, startDate, endDate, type, link, isBlocked } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
         if (!isAdmin) {
             criteria.isBlocked = false;
+        } else if (isBlocked !== undefined) {
+            criteria.isBlocked = isBlocked === 'true';
         }
 
         if (search) {
@@ -69,6 +71,9 @@ export const get_all_hero_banner = async (req, res) => {
         }
         if (type) {
             criteria.type = type
+        }
+        if (link) {
+            criteria.link = { $regex: link, $options: 'i' }
         }
         if (startDate && endDate) {
             criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
