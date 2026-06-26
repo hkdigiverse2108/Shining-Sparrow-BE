@@ -1,7 +1,7 @@
 "use strict"
 import bcryptjs from 'bcryptjs'
 import { Request, Response } from 'express'
-import { userModel, userAccountDeletionModel } from '../../database'
+import { userModel, userAccountDeletionModel, adminLoginHistoryModel } from '../../database'
 import { apiResponse, generateHash, generateToken, getUniqueOtp, USER_ROLES } from '../../common'
 import { createData, email_verification_mail, getFirstMatch, reqInfo, responseMessage, updateData, send_otr_mail, send_forgot_otr_mail } from '../../helper'
 import { forgotPasswordSchema, otpVerifySchema, resetPasswordSchema, signUpSchema, loginSchema, changePasswordSchema, updateProfileSchema, deleteUserAccountSchema, resendOTPSchema, forgotOtrSchema } from '../../validation'
@@ -141,6 +141,27 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             status: "Login",
             generatedOn: (new Date().getTime())
         }, { expiresIn: '365d' })
+
+        // Log admin login history
+        if (value.userType === USER_ROLES.ADMIN) {
+            try {
+                const userAgent = req.header('user-agent') || ''
+                const splitResult = userAgent.split('(').toString().split(')')
+                const browserName = splitResult[splitResult.length - 1]?.trim() || 'Unknown'
+                const osParts = splitResult[0]?.split(',') || []
+                const osName = osParts[1]?.trim() || 'Unknown'
+
+                await createData(adminLoginHistoryModel, {
+                    adminId: response._id,
+                    ipAddress: req.ip || req.connection?.remoteAddress || '',
+                    device: osName,
+                    browser: browserName,
+                    userAgent,
+                })
+            } catch (logError) {
+                console.log('Login history log error:', logError)
+            }
+        }
 
         const result = {
             isEmailVerified: response?.isEmailVerified,

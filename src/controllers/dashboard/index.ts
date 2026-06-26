@@ -1,5 +1,5 @@
 import { apiResponse, PAYMENT_STATUS, USER_ROLES } from "../../common";
-import { courseModel, userCourseModel, userModel, workshopModel, workshopPaymentModel } from "../../database";
+import { courseModel, userCourseModel, userModel, workshopModel, workshopPaymentModel, adminLoginHistoryModel } from "../../database";
 import { reqInfo, responseMessage } from "../../helper";
 
 export const dashboard = async (req, res) => {
@@ -159,6 +159,35 @@ export const analytics = async (req, res) => {
         };
 
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("analytics"), result, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+};
+
+export const loginHistory = async (req, res) => {
+    reqInfo(req)
+    try {
+        const { page = 1, limit = 20 } = req.query;
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        const [records, total] = await Promise.all([
+            adminLoginHistoryModel.find({ adminId: req.headers.user?._id })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limitNum)
+                .lean(),
+            adminLoginHistoryModel.countDocuments({ adminId: req.headers.user?._id }),
+        ]);
+
+        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("login history"), {
+            records,
+            total,
+            page: pageNum,
+            limit: limitNum,
+        }, {}));
     } catch (error) {
         console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));

@@ -264,7 +264,9 @@ export const get_payment_history = async (req, res) => {
                 image: course?.image || '',
                 paymentId: record.razorpayPaymentId || 'N/A',
                 orderId: record.razorpayOrderId || 'N/A',
-                amount: amountPaid,
+                amount: course?.price || 0,
+                finalAmount: amountPaid,
+                discountAmount: 0,
                 status: record.paymentStatus,
                 date: record.purchaseDate || record.createdAt
             });
@@ -274,6 +276,8 @@ export const get_payment_history = async (req, res) => {
         for (const record of workshopsPurchased) {
             const workshop = record.workshopId;
             const amountPaid = record.finalAmount ?? record.amount ?? workshop?.price ?? 0;
+            const originalPrice = workshop?.price || 0;
+            const discount = record.discountAmount || 0;
             if (record.paymentStatus === 'completed') {
                 totalSpent += amountPaid;
             }
@@ -284,7 +288,9 @@ export const get_payment_history = async (req, res) => {
                 image: workshop?.image || '',
                 paymentId: record.paymentId || 'N/A',
                 orderId: record.receiptNumber || 'N/A',
-                amount: amountPaid,
+                amount: originalPrice,
+                finalAmount: amountPaid,
+                discountAmount: discount,
                 status: record.paymentStatus,
                 date: record.transactionDate || record.createdAt
             });
