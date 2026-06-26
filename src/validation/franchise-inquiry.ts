@@ -22,6 +22,10 @@ export const editFranchiseInquirySchema = Joi.object().keys({
     occupation: Joi.string().allow('', null).optional(),
     message: Joi.string().allow('', null).optional(),
     isRead: Joi.boolean().optional(),
+    replySubject: Joi.string().allow('', null).optional(),
+    replyMessage: Joi.string().allow('', null).optional(),
+    repliedAt: Joi.string().allow('', null).optional(),
+    isReplied: Joi.boolean().optional(),
 });
 
 export const deleteFranchiseInquirySchema = Joi.object().keys({

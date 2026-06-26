@@ -12,6 +12,10 @@ const franchiseInquirySchema = new mongoose.Schema({
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
     isRead: { type: Boolean, default: false },
+    replySubject: { type: String },
+    replyMessage: { type: String },
+    repliedAt: { type: Date },
+    isReplied: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 
 export const franchiseInquiryModel = mongoose.model('franchise-inquiry', franchiseInquirySchema);
