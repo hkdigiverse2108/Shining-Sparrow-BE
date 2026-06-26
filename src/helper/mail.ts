@@ -183,6 +183,7 @@ export const email_verification_mail = async (user: any, otp: any) => {
 export const send_otr_mail = async (user: any, otr: any) => {
     return new Promise(async (resolve, reject) => {
         try {
+            console.log("send_otr_mail triggered for user:", { id: user?._id, email: user?.email, fullName: user?.fullName });
             const mailOptions = {
                 from: mail,
                 to: user.email,
@@ -363,15 +364,16 @@ export const send_otr_mail = async (user: any, otr: any) => {
 
             await transPorter.sendMail(mailOptions, function (err, data) {
                 if (err) {
-                    console.log(err);
+                    console.error("send_otr_mail nodemailer callback error:", err);
                     reject(err);
                 } else {
+                    console.log("send_otr_mail nodemailer callback success:", data);
                     resolve(`Email has been sent to ${user.email}`);
                 }
             });
 
         } catch (error) {
-            console.log(error);
+            console.error("send_otr_mail catch block error:", error);
             reject(error);
         }
     });

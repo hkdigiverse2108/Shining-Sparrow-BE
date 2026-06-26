@@ -23,6 +23,12 @@ export const add_user = async (req, res) => {
         const response = await createData(userModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
+        try {
+            await send_otr_mail(response, value.otr);
+        } catch (mailError) {
+            console.log("Error sending OTR welcome email:", mailError);
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("user"), response, {}))
     } catch (error) {
         console.log(error)
