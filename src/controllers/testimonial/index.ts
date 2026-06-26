@@ -11,6 +11,10 @@ export const add_testimonial = async (req, res) => {
         const { error, value } = addTestimonialSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
+        if (value.learningCatalogId === 'all' || value.learningCatalogId === '') {
+            value.learningCatalogId = null;
+        }
+
         const response = await createData(testimonialModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
@@ -36,6 +40,10 @@ export const edit_testimonial_by_id = async (req, res) => {
     try {
         const { error, value } = editTestimonialSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
+
+        if (value.learningCatalogId === 'all' || value.learningCatalogId === '') {
+            value.learningCatalogId = null;
+        }
 
         const response = await updateData(testimonialModel, { _id: new ObjectId(value.testimonialId), isDeleted: false }, value, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.updateDataError("testimonial"), {}, {}))
@@ -84,7 +92,11 @@ export const get_all_testimonial = async (req, res) => {
         }
 
         if (learningCatalogFilter) {
-            criteria.learningCatalogId = new ObjectId(learningCatalogFilter)
+            if (learningCatalogFilter === 'all') {
+                criteria.learningCatalogId = { $exists: true };
+            } else {
+                criteria.learningCatalogId = new ObjectId(learningCatalogFilter);
+            }
         }
 
         if (isFeatured !== undefined) {

@@ -11,6 +11,10 @@ export const add_faq = async (req, res) => {
         const { error, value } = addFaqSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
+        if (value.learningCatalogId === 'all' || value.learningCatalogId === '') {
+            value.learningCatalogId = null;
+        }
+
         const response = await createData(faqModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("faq"), response, {}))
@@ -25,6 +29,10 @@ export const edit_faq_by_id = async (req, res) => {
     try {
         const { error, value } = editFaqSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
+
+        if (value.learningCatalogId === 'all' || value.learningCatalogId === '') {
+            value.learningCatalogId = null;
+        }
 
         const response = await updateData(faqModel, { _id: new ObjectId(value.faqId), isDeleted: false }, value, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.updateDataError("faq"), {}, {}))
@@ -79,9 +87,17 @@ export const get_all_faq = async (req, res) => {
         }
 
         if (learningCatalogFilter) {
-            criteria.learningCatalogId = { $in: [new ObjectId(learningCatalogFilter), null] }
+            if (learningCatalogFilter === 'all') {
+                criteria.learningCatalogId = { $exists: true };
+            } else {
+                criteria.learningCatalogId = { $in: [new ObjectId(learningCatalogFilter), null] };
+            }
         } else if (learningCatalogId) {
-            criteria.learningCatalogId = new ObjectId(learningCatalogId)
+            if (learningCatalogId === 'all') {
+                criteria.learningCatalogId = { $exists: true };
+            } else {
+                criteria.learningCatalogId = new ObjectId(learningCatalogId);
+            }
         }
 
         if (isFeatured !== undefined) {
