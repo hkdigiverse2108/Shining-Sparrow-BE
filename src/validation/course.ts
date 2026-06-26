@@ -57,5 +57,8 @@ export const purchaseCourseSchema = Joi.object().keys({
     courseId: Joi.string().required(),
     razorpayOrderId: Joi.string().optional(),
     razorpayPaymentId: Joi.string().optional(),
+    couponCodeId: Joi.string().allow('', null).optional(),
+    discountAmount: Joi.number().default(0),
+    finalAmount: Joi.number().optional(),
 });
 
