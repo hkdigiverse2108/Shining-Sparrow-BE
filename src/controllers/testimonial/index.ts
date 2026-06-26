@@ -19,6 +19,11 @@ export const add_testimonial = async (req, res) => {
             await updateData(workshopModel, { _id: new ObjectId(value.learningCatalogId) }, { $push: { workshopTestimonials: response._id } }, {});
         }
 
+        if (value.learningCatalogId && value.type === 'course') {
+            const { courseModel } = require('../../database');
+            await updateData(courseModel, { _id: new ObjectId(value.learningCatalogId) }, { $push: { courseTestimonials: response._id } }, {});
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("testimonial"), response, {}))
     } catch (error) {
         console.log(error)

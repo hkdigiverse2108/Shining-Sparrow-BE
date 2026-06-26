@@ -138,7 +138,8 @@ export const get_all_course = async (req, res) => {
         }
 
         const populateModel = [
-            { path: 'courseCurriculumIds' }
+            { path: 'courseCurriculumIds' },
+            { path: 'courseTestimonials', select: 'name designation rate description image' }
         ];
         const response = await findAllWithPopulate(courseModel, criteria, {}, options, populateModel)
         const totalCount = await countData(courseModel, criteria)
@@ -181,8 +182,11 @@ export const get_course_by_id = async (req, res) => {
         const { error, value } = getCourseSchema.validate(req.params)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
-        const populateModel = [{ path: 'courseCurriculumIds' }];
-        const response = await findOneAndPopulate(courseModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, {}, populateModel);
+        const populateModel = [
+            { path: 'courseCurriculumIds' },
+            { path: 'courseTestimonials', select: 'name designation rate description image' }
+        ];
+        const response = await findOneAndPopulate(courseModel, { _id: new ObjectId(value.id), isDeleted: false }, {}, { lean: true }, populateModel);
         if (!response || response.isDeleted) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("course"), {}, {}))
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
