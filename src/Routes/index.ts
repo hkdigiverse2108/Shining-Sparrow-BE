@@ -26,6 +26,7 @@ import { examRoute } from './exam'
 import { notificationRoute } from './notification'
 import { chatRoute } from './chat'
 import { contactUsRoute } from './contact-us'
+import { franchiseInquiryRoute } from './franchise-inquiry'
 
 const router = express.Router()
 
@@ -56,5 +57,6 @@ router.use('/exam', examRoute)
 router.use('/notification', notificationRoute)
 router.use('/chat', chatRoute)
 router.use('/contact-us', contactUsRoute)
+router.use('/franchise-inquiry', franchiseInquiryRoute)
 
 export { router }
