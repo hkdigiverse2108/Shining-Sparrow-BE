@@ -20,6 +20,8 @@ const courseSchema = new mongoose.Schema({
     isBlocked: { type: Boolean, default: false },
     trailerUrl: { type: String, default: null },
     courseTestimonials: [{ type: mongoose.Schema.Types.ObjectId, ref: 'testimonial' }],
+    isFeatured: { type: Boolean, default: false },
+    priority: { type: Number, default: 0 },
 }, { timestamps: true, versionKey: false });
 
 export const courseModel = mongoose.model('course', courseSchema);

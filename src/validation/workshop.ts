@@ -15,6 +15,8 @@ export const addWorkshopSchema = Joi.object().keys({
     language: Joi.string().allow('', null).optional(),
     duration: Joi.string().allow('', null).optional(),
     isBlocked: Joi.boolean().default(false).optional(),
+    isFeatured: Joi.boolean().default(false).optional(),
+    priority: Joi.number().default(0).optional(),
 })
 
 export const editWorkshopSchema = Joi.object().keys({
@@ -33,6 +35,8 @@ export const editWorkshopSchema = Joi.object().keys({
     language: Joi.string().allow('', null).optional(),
     duration: Joi.string().allow('', null).optional(),
     isBlocked: Joi.boolean().optional(),
+    isFeatured: Joi.boolean().optional(),
+    priority: Joi.number().optional(),
 })
 
 export const deleteWorkshopSchema = Joi.object().keys({
