@@ -96,7 +96,7 @@ export const get_all_course = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers
     try {
-        const { page, limit, search, startDate, endDate, minPrice, maxPrice, language, isBlocked, minAccessDurationDays, maxAccessDurationDays } = req.query
+        const { page, limit, search, startDate, endDate, minPrice, maxPrice, language, isBlocked, minAccessDurationDays, maxAccessDurationDays, isFeatured } = req.query
         let criteria: any = { isDeleted: false }, options: any = { lean: true }
 
         const isAdmin = user && user.role === USER_ROLES.ADMIN;
@@ -116,6 +116,10 @@ export const get_all_course = async (req, res) => {
             criteria.language = language;
         }
 
+        if (isFeatured !== undefined) {
+            criteria.isFeatured = isFeatured === 'true';
+        }
+
         if (minAccessDurationDays !== undefined || maxAccessDurationDays !== undefined) {
             criteria.accessDurationDays = {};
             if (minAccessDurationDays !== undefined) criteria.accessDurationDays.$gte = Number(minAccessDurationDays);
@@ -131,7 +135,7 @@ export const get_all_course = async (req, res) => {
         if (startDate && endDate) {
             criteria.createdAt = { $gte: new Date(startDate), $lte: new Date(endDate) }
         }
-        options.sort = { createdAt: -1 }
+        options.sort = { priority: 1, createdAt: -1 }
         if (page && limit) {
             options.skip = (parseInt(page) - 1) * parseInt(limit)
             options.limit = parseInt(limit)

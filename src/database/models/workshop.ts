@@ -16,6 +16,8 @@ const workshopSchema = new mongoose.Schema({
     duration: { type: String },
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
+    isFeatured: { type: Boolean, default: false },
+    priority: { type: Number, default: 0 },
 }, { timestamps: true, versionKey: false });
 
 export const workshopModel = mongoose.model('workshop', workshopSchema);
