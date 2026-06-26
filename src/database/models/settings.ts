@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const settingsSchema = new mongoose.Schema({
     logo: { type: String },
+    phoneNumber: { type: String },
     razorpayKey: { type: String },
     razorpaySecret: { type: String },
     enrolledLearners: { type: Number, default: 0 },

@@ -55,5 +55,6 @@ export const purchaseWorkshopSchema = Joi.object().keys({
     receiptNumber: Joi.string().allow('', null).optional(),
     discountAmount: Joi.number().default(0),
     finalAmount: Joi.number().optional(),
+    couponCodeId: Joi.string().allow('', null).optional(),
 })
 

@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { userModel, workshopCurriculumModel, workshopModel, workshopPaymentModel } from "../../database";
+import { couponCodeModel, userModel, workshopCurriculumModel, workshopModel, workshopPaymentModel } from "../../database";
 import { countData, createData, findAllWithPopulate, findAllWithPopulateWithSorting, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addWorkshopSchema, editWorkshopSchema, deleteWorkshopSchema, getWorkshopSchema, purchaseWorkshopSchema } from "../../validation";
 
@@ -197,12 +197,19 @@ export const purchase_workshop = async (req, res) => {
             receiptNumber: value.receiptNumber,
             discountAmount: value.discountAmount || 0,
             finalAmount: value.finalAmount || (value.amount || workshop.price),
+            couponCodeId: value.couponCodeId ? new ObjectId(value.couponCodeId) : null,
         }
 
         const response = await createData(workshopPaymentModel, purchaseData);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
         await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $push: { workshopIds: new ObjectId(response.workshopId) } }, { new: true, timestamps: false })
+
+        // Increment coupon code usedCount if a coupon was applied
+        if (value.couponCodeId) {
+            await updateData(couponCodeModel, { _id: new ObjectId(value.couponCodeId), isDeleted: false }, { $inc: { usedCount: 1 } }, {})
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.purchaseSuccess, response, {}))
     } catch (error) {
         console.log(error)
