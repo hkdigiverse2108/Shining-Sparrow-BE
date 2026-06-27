@@ -1,6 +1,6 @@
 import { apiResponse } from "../../common";
 import { franchiseInquiryModel } from "../../database";
-import { countData, createData, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
+import { countData, createData, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData, createAdminNotification } from "../../helper";
 import { addFranchiseInquirySchema, editFranchiseInquirySchema, deleteFranchiseInquirySchema, getFranchiseInquirySchema } from "../../validation";
 
 const ObjectId = require('mongoose').Types.ObjectId;
@@ -13,6 +13,13 @@ export const add_franchise_inquiry = async (req, res) => {
 
         const response = await createData(franchiseInquiryModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
+        // Send admin notification
+        await createAdminNotification(
+            'New Franchise Inquiry 🏢',
+            `A new franchise inquiry has been received from ${value.name} (${value.city || 'Unknown City'}).`,
+            'system'
+        );
+
         return res.status(200).json(new apiResponse(200, responseMessage?.addDataSuccess("franchise inquiry"), response, {}))
     } catch (error) {
         console.log(error)

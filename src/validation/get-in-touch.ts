@@ -16,6 +16,10 @@ export const editGetInTouchSchema = Joi.object().keys({
     subject: Joi.string().allow('', null).optional(),
     message: Joi.string().optional(),
     isRead: Joi.boolean().optional(),
+    isReplied: Joi.boolean().optional(),
+    replySubject: Joi.string().allow('', null).optional(),
+    replyMessage: Joi.string().allow('', null).optional(),
+    repliedAt: Joi.string().allow('', null).optional(),
 })
 
 export const deleteGetInTouchSchema = Joi.object().keys({

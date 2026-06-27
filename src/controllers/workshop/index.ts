@@ -1,6 +1,6 @@
 import { apiResponse, USER_ROLES } from "../../common";
 import { couponCodeModel, userModel, workshopCurriculumModel, workshopModel, workshopPaymentModel } from "../../database";
-import { countData, createData, findAllWithPopulate, findAllWithPopulateWithSorting, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
+import { countData, createData, findAllWithPopulate, findAllWithPopulateWithSorting, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData, createDbNotification, createAdminNotification } from "../../helper";
 import { addWorkshopSchema, editWorkshopSchema, deleteWorkshopSchema, getWorkshopSchema, purchaseWorkshopSchema } from "../../validation";
 
 const ObjectId = require('mongoose').Types.ObjectId;
@@ -209,6 +209,20 @@ export const purchase_workshop = async (req, res) => {
         if (value.couponCodeId) {
             await updateData(couponCodeModel, { _id: new ObjectId(value.couponCodeId), isDeleted: false }, { $inc: { usedCount: 1 } }, {})
         }
+
+        // Send notifications
+        const studentName = (req.headers.user as any)?.fullName || 'A student';
+        await createDbNotification(
+            userId,
+            'Workshop Booked Successfully! 🚀',
+            `Woohoo! You have successfully booked the workshop: ${workshop.title}. We'll see you there!`,
+            'workshop'
+        );
+        await createAdminNotification(
+            'New Workshop Booking 🎟️',
+            `${studentName} has booked the workshop: ${workshop.title}.`,
+            'workshop'
+        );
 
         return res.status(200).json(new apiResponse(200, responseMessage?.purchaseSuccess, response, {}))
     } catch (error) {

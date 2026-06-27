@@ -16,7 +16,7 @@ export const addTestimonialSchema = Joi.object().keys({
 export const editTestimonialSchema = Joi.object().keys({
     testimonialId: Joi.string().required(),
     image: Joi.string().allow('', null).optional(), 
-    name: Joi.string().required(),
+    name: Joi.string().optional(),
     designation: Joi.string().allow('', null).optional(),
     learningCatalogId: Joi.string().optional(),
     rate: Joi.number().min(0).max(5).optional(),

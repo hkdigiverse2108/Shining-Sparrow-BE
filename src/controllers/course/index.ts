@@ -1,6 +1,6 @@
 import { apiResponse, USER_ROLES } from "../../common";
 import { couponCodeModel, courseLessonModel, courseModel, settingsModel, userCourseModel, userModel, userExamAttemptModel, userLessonCompletionModel } from "../../database";
-import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
+import { countData, createData, findAllWithPopulate, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData, createDbNotification, createAdminNotification } from "../../helper";
 import { addCourseSchema, editCourseSchema, deleteCourseSchema, getCourseSchema, purchaseCourseSchema } from "../../validation";
 import Razorpay from "razorpay";
 import { computeLessonUnlockStatus } from "../course-lesson";
@@ -277,6 +277,20 @@ export const purchase_course = async (req, res) => {
         if (value.couponCodeId) {
             await updateData(couponCodeModel, { _id: new ObjectId(value.couponCodeId), isDeleted: false }, { $inc: { usedCount: 1 } }, {})
         }
+
+        // Send notifications
+        const studentName = (req.headers.user as any)?.fullName || 'A student';
+        await createDbNotification(
+            userId,
+            'Course Enrolled Successfully! 📚',
+            `Congratulations! You have successfully enrolled in the course: ${course.name}. Start learning now!`,
+            'system'
+        );
+        await createAdminNotification(
+            'New Course Enrollment 🎓',
+            `${studentName} has enrolled in the course: ${course.name}.`,
+            'system'
+        );
 
         return res.status(200).json(new apiResponse(200, responseMessage?.purchaseSuccess, response, {}))
     } catch (error) {
