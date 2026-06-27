@@ -42,7 +42,7 @@ router.post("/", (req: any, res: any) => {
             req.files.images.forEach((file: any) => {
                 const newPath = path.join(imageDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const imageUrl = `${config.BACKEND_URL}/images/${req.body.category}/${file.filename}`;
+                const imageUrl = `/images/${req.body.category}/${file.filename}`;
                 uploadedImages.push(imageUrl);
             });
         }
@@ -57,7 +57,7 @@ router.post("/", (req: any, res: any) => {
             req.files.pdf.forEach((file: any) => {
                 const newPath = path.join(pdfDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const pdfUrl = `${config.BACKEND_URL}/pdf/${file.filename}`;
+                const pdfUrl = `/pdf/${file.filename}`;
                 uploadedPdfs.push(pdfUrl);
             });
         }
@@ -72,7 +72,7 @@ router.post("/", (req: any, res: any) => {
             req.files.doc.forEach((file: any) => {
                 const newPath = path.join(docDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const docUrl = `${config.BACKEND_URL}/docs/${file.filename}`;
+                const docUrl = `/docs/${file.filename}`;
                 uploadedDocs.push(docUrl);
             });
         }
@@ -173,7 +173,7 @@ router.get("/images/:category", (req, res) => {
             return res.status(200).json(new apiResponse(200, "No images found", [], {}));
         }
         const images = fs.readdirSync(dir).map(
-            (file) => `${config.BACKEND_URL}/images/${category}/${file}`
+            (file) => `/images/${category}/${file}`
         );
         return res.status(200).json(new apiResponse(200, "Images fetched successfully", images, {}));
     } catch (error) {
@@ -191,7 +191,7 @@ router.get("/pdf", (req, res) => {
             return res.status(200).json(new apiResponse(200, "No pdf found", [], {}));
         }
         const images = fs.readdirSync(dir).map(
-            (file) => `${config.BACKEND_URL}/pdf/${file}`
+            (file) => `/pdf/${file}`
         );
         return res.status(200).json(new apiResponse(200, "PDF fetched successfully", images, {}));
     } catch (error) {
