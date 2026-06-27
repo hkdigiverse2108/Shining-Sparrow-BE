@@ -15,6 +15,10 @@ export const add_testimonial = async (req, res) => {
             value.learningCatalogId = null;
         }
 
+        if (value.type === 'home') {
+            value.learningCatalogId = null;
+        }
+
         const response = await createData(testimonialModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
@@ -41,12 +45,50 @@ export const edit_testimonial_by_id = async (req, res) => {
         const { error, value } = editTestimonialSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
+        const oldTestimonial = await getFirstMatch(testimonialModel, { _id: new ObjectId(value.testimonialId), isDeleted: false }, {}, {});
+        if (!oldTestimonial) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("testimonial"), {}, {}))
+
         if (value.learningCatalogId === 'all' || value.learningCatalogId === '') {
+            value.learningCatalogId = null;
+        }
+
+        const oldType = oldTestimonial.type;
+        const oldCatalogIdStr = oldTestimonial.learningCatalogId ? oldTestimonial.learningCatalogId.toString() : null;
+
+        const newType = value.type !== undefined ? value.type : oldType;
+        if (newType === 'home') {
             value.learningCatalogId = null;
         }
 
         const response = await updateData(testimonialModel, { _id: new ObjectId(value.testimonialId), isDeleted: false }, value, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.updateDataError("testimonial"), {}, {}))
+
+        const newCatalogIdStr = response.learningCatalogId ? response.learningCatalogId.toString() : null;
+
+        if (oldType !== newType || oldCatalogIdStr !== newCatalogIdStr) {
+            // Unassign from old if it was assigned
+            if (oldCatalogIdStr) {
+                if (oldType === 'workshop') {
+                    const { workshopModel } = require('../../database');
+                    await updateData(workshopModel, { _id: new ObjectId(oldCatalogIdStr) }, { $pull: { workshopTestimonials: response._id } }, {});
+                } else if (oldType === 'course') {
+                    const { courseModel } = require('../../database');
+                    await updateData(courseModel, { _id: new ObjectId(oldCatalogIdStr) }, { $pull: { courseTestimonials: response._id } }, {});
+                }
+            }
+
+            // Assign to new if it is being assigned
+            if (newCatalogIdStr) {
+                if (newType === 'workshop') {
+                    const { workshopModel } = require('../../database');
+                    await updateData(workshopModel, { _id: new ObjectId(newCatalogIdStr) }, { $push: { workshopTestimonials: response._id } }, {});
+                } else if (newType === 'course') {
+                    const { courseModel } = require('../../database');
+                    await updateData(courseModel, { _id: new ObjectId(newCatalogIdStr) }, { $push: { courseTestimonials: response._id } }, {});
+                }
+            }
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.updateDataSuccess("testimonial"), response, {}))
     } catch (error) {
         console.log(error)
@@ -61,6 +103,18 @@ export const delete_testimonial_by_id = async (req, res) => {
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
         const response = await updateData(testimonialModel, { _id: new ObjectId(value.id) }, { isDeleted: true }, { new: true })
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("testimonial"), {}, {}))
+
+        if (response.learningCatalogId) {
+            if (response.type === 'workshop') {
+                const { workshopModel } = require('../../database');
+                await updateData(workshopModel, { _id: new ObjectId(response.learningCatalogId) }, { $pull: { workshopTestimonials: response._id } }, {});
+            }
+            if (response.type === 'course') {
+                const { courseModel } = require('../../database');
+                await updateData(courseModel, { _id: new ObjectId(response.learningCatalogId) }, { $pull: { courseTestimonials: response._id } }, {});
+            }
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.deleteDataSuccess("testimonial"), response, {}))
     } catch (error) {
         console.log(error)
