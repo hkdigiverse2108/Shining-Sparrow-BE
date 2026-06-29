@@ -3,15 +3,15 @@ import { USER_ROLES } from "../common";
 
 export const signUpSchema = Joi.object().keys({
     fullName: Joi.string().required(),
-    email: Joi.string().email().required(),
+    email: Joi.string().email().max(35).required(),
     password: Joi.string().required(),
-    phone: Joi.string().optional(),
+    phone: Joi.string().pattern(/^\d{10}$/).optional(),
     designation: Joi.string().optional(),
 });
 
 export const loginSchema = Joi.object().keys({
     userType: Joi.string().valid(USER_ROLES.ADMIN, USER_ROLES.USER).default(USER_ROLES.USER),
-    email: Joi.string().email().when('userType', {
+    email: Joi.string().email().max(35).when('userType', {
         is: USER_ROLES.ADMIN,
         then: Joi.required(),
         otherwise: Joi.forbidden()
@@ -21,7 +21,7 @@ export const loginSchema = Joi.object().keys({
         then: Joi.required(),
         otherwise: Joi.forbidden()
     }),
-    phoneNumber: Joi.string().when('userType', {
+    phoneNumber: Joi.string().pattern(/^\d{10}$/).when('userType', {
         is: USER_ROLES.USER,
         then: Joi.required(),
         otherwise: Joi.forbidden()
@@ -52,7 +52,7 @@ export const forgotPasswordSchema = Joi.object().keys({
 });
 
 export const forgotOtrSchema = Joi.object().keys({
-    email: Joi.string().email().required(),
+    email: Joi.string().email().max(35).required(),
 });
 
 export const changePasswordSchema = Joi.object().keys({
