@@ -174,12 +174,12 @@ export const loginHistory = async (req, res) => {
         const skip = (pageNum - 1) * limitNum;
 
         const [records, total] = await Promise.all([
-            adminLoginHistoryModel.find({ adminId: req.headers.user?._id })
+            adminLoginHistoryModel.find({ adminId: req.headers.user?._id, isDeleted: false })
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limitNum)
                 .lean(),
-            adminLoginHistoryModel.countDocuments({ adminId: req.headers.user?._id }),
+            adminLoginHistoryModel.countDocuments({ adminId: req.headers.user?._id, isDeleted: false }),
         ]);
 
         return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("login history"), {
@@ -188,6 +188,79 @@ export const loginHistory = async (req, res) => {
             page: pageNum,
             limit: limitNum,
         }, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+};
+
+export const deleteLoginHistory = async (req, res) => {
+    reqInfo(req);
+    try {
+        const { id } = req.params;
+        const log = await adminLoginHistoryModel.findOne({ _id: id });
+        if (!log) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("login log"), {}, {}));
+        }
+
+        if (log.isBlocked) {
+            // Soft delete: keep the record to maintain the block, but hide from UI
+            log.isDeleted = true;
+            await log.save();
+        } else {
+            // Hard delete: remove from DB
+            await adminLoginHistoryModel.deleteOne({ _id: id });
+        }
+
+        return res.status(200).json(new apiResponse(200, responseMessage?.deleteDataSuccess("login history"), {}, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+};
+
+export const blockDevice = async (req, res) => {
+    reqInfo(req);
+    try {
+        const { id } = req.params;
+        const log = await adminLoginHistoryModel.findOne({ _id: id });
+        if (!log) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("login log"), {}, {}));
+        }
+
+        // Set isBlocked to true on this log only
+        log.isBlocked = true;
+        await log.save();
+
+        return res.status(200).json(new apiResponse(200, "Device has been successfully blocked!", {}, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+};
+
+export const unblockDevice = async (req, res) => {
+    reqInfo(req);
+    try {
+        const { id } = req.params;
+        const log = await adminLoginHistoryModel.findOne({ _id: id });
+        if (!log) {
+            return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("login log"), {}, {}));
+        }
+
+        // Unblock all active/soft-deleted logs matching this device/userAgent to fully unblock the device
+        await adminLoginHistoryModel.updateMany(
+            {
+                ipAddress: log.ipAddress,
+                $or: [
+                    ...(log.device && log.device !== 'Unknown' ? [{ device: log.device }] : []),
+                    { userAgent: log.userAgent }
+                ]
+            },
+            { isBlocked: false }
+        );
+
+        return res.status(200).json(new apiResponse(200, "Device has been successfully unblocked!", {}, {}));
     } catch (error) {
         console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));

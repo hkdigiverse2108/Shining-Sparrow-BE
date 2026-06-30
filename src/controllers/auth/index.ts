@@ -122,6 +122,27 @@ export const login = async (req: Request, res: Response) => { //email or passwor
         }
 
         if (value.userType === USER_ROLES.ADMIN) {
+            // Check if device is blocked
+            const userAgent = req.header('user-agent') || ''
+            const splitResult = userAgent.split('(').toString().split(')')
+            const osParts = splitResult[0]?.split(',') || []
+            const osName = osParts[1]?.trim() || 'Unknown'
+
+            const ipAddress = req.ip || req.connection?.remoteAddress || ''
+            const isBlockedDev = await getFirstMatch(adminLoginHistoryModel, {
+                ipAddress,
+                $or: [
+                    ...(osName !== 'Unknown' ? [{ device: osName }] : []),
+                    { userAgent: userAgent }
+                ],
+                isBlocked: true,
+                isDeleted: false
+            }, {}, {})
+
+            if (isBlockedDev) {
+                return res.status(403).json(new apiResponse(403, responseMessage?.deviceBlocked, {}, {}))
+            }
+
             // Admin login flow
             response = await getFirstMatch(userModel, { email: value.email, role: USER_ROLES.ADMIN, isDeleted: false }, {}, {})
             if (!response) return res.status(400).json(new apiResponse(400, responseMessage?.invalidUserPasswordEmail, {}, {}))

@@ -6,6 +6,8 @@ const adminLoginHistorySchema = new mongoose.Schema({
     device: { type: String, default: '' },
     browser: { type: String, default: '' },
     userAgent: { type: String, default: '' },
+    isBlocked: { type: Boolean, default: false },
+    isDeleted: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false })
 
 export const adminLoginHistoryModel = mongoose.model('admin_login_history', adminLoginHistorySchema)

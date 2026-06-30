@@ -21,11 +21,17 @@ export const add_edit_settings = async (req, res) => {
 export const get_settings = async (req, res) => {
     reqInfo(req)
     try {
-        const response = await settingsModel.findOne({ isDeleted: false }).select('-razorpaySecret')
+        const response = await settingsModel.findOne({ isDeleted: false }).lean()
 
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("settings"), {}, {}))
 
-        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("settings"), response, {}))
+        const settingsObj = {
+            ...response,
+            hasRazorpaySecret: !!response.razorpaySecret
+        };
+        delete settingsObj.razorpaySecret;
+
+        return res.status(200).json(new apiResponse(200, responseMessage?.getDataSuccess("settings"), settingsObj, {}))
     } catch (error) {
         console.log(error);
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
