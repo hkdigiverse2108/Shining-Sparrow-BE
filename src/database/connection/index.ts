@@ -2,6 +2,8 @@ require('dotenv').config()
 import mongoose from 'mongoose';
 import express from 'express'
 import { config } from '../../../config';
+import dns from "dns";
+dns.setServers(["1.1.1.1", "8.8.8.8"])
 const dbUrl: any = config.DB_URL;
 const mongooseConnection = express()
 mongoose.set('strictQuery', false)
