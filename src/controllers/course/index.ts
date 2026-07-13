@@ -255,6 +255,10 @@ export const purchase_course = async (req, res) => {
             accessExpiryDate = new Date(accessStartDate.getTime() + course.accessDurationDays * 24 * 60 * 60 * 1000);
         }
 
+        const finalAmt = value.finalAmount || course.price;
+        const basePrice = course.price || 0;
+        const totalDiscount = Math.max(0, basePrice - finalAmt);
+
         const purchaseData = {
             userId: new ObjectId(userId),
             courseId: new ObjectId(value.courseId),
@@ -264,8 +268,8 @@ export const purchase_course = async (req, res) => {
             accessStartDate,
             accessExpiryDate,
             couponCodeId: value.couponCodeId ? new ObjectId(value.couponCodeId) : null,
-            discountAmount: value.discountAmount || 0,
-            finalAmount: value.finalAmount || course.price,
+            discountAmount: totalDiscount,
+            finalAmount: finalAmt,
         }
 
         const response = await createData(userCourseModel, purchaseData);

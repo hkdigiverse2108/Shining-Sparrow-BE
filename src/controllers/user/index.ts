@@ -253,7 +253,9 @@ export const get_payment_history = async (req, res) => {
         // Normalize Courses
         for (const record of coursesPurchased) {
             const course = record.courseId;
-            const amountPaid = course?.price || 0;
+            const originalPrice = course?.price || 0;
+            const amountPaid = record.finalAmount ?? originalPrice;
+            const discount = record.discountAmount || 0;
             if (record.paymentStatus === 'completed') {
                 totalSpent += amountPaid;
             }
@@ -264,9 +266,9 @@ export const get_payment_history = async (req, res) => {
                 image: course?.image || '',
                 paymentId: record.razorpayPaymentId || 'N/A',
                 orderId: record.razorpayOrderId || 'N/A',
-                amount: course?.price || 0,
+                amount: originalPrice,
                 finalAmount: amountPaid,
-                discountAmount: 0,
+                discountAmount: discount,
                 status: record.paymentStatus,
                 date: record.purchaseDate || record.createdAt
             });

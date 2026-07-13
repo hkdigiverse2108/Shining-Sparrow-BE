@@ -11,6 +11,9 @@ const userCourseSchema = new mongoose.Schema({
     razorpayPaymentId: { type: String },
     accessStartDate: { type: Date, default: Date.now },
     accessExpiryDate: { type: Date, default: null },
+    discountAmount: { type: Number, default: 0 },
+    finalAmount: { type: Number },
+    couponCodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'coupon_code', default: null },
     isDeleted: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 
