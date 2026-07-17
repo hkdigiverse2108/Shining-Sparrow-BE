@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const heroBannerSchema = new mongoose.Schema({
     type: { type: String, enum: Object.values(HERO_BANNER_TYPE), required: true },
     title: { type: String },
+    tagline: { type: String },
     description: { type: String },
     images: [{ type: String }], // For Web type - 2 images
     link: { type: String }, // For App type
