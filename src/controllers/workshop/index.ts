@@ -177,14 +177,25 @@ export const purchase_workshop = async (req, res) => {
         const { error, value } = purchaseWorkshopSchema.validate(req.body)
         if (error) return res.status(501).json(new apiResponse(501, error?.details[0]?.message, {}, {}))
 
-        const userId = req.headers.user?._id;
-        if (!userId) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}))
+        let userId = req.headers.user?._id;
+        if (!userId && (value?.phoneNumber || value?.email)) {
+            const foundUser = await getFirstMatch(userModel, {
+                $or: [
+                    ...(value.phoneNumber ? [{ phoneNumber: value.phoneNumber }] : []),
+                    ...(value.email ? [{ email: value.email }] : [])
+                ],
+                role: USER_ROLES.USER,
+                isDeleted: false
+            }, {}, {});
+            if (foundUser) userId = foundUser._id;
+        }
+        if (!userId) return res.status(401).json(new apiResponse(401, "User not authenticated", {}, {}));
 
         const workshop = await getFirstMatch(workshopModel, { _id: new ObjectId(value.workshopId), isDeleted: false }, {}, {})
         if (!workshop) return res.status(404).json(new apiResponse(404, responseMessage?.getDataNotFound("workshop"), {}, {}))
 
-        const existingPurchase = await getFirstMatch(workshopPaymentModel, { workshopId: new ObjectId(value.workshopId), user_id: new ObjectId(userId), isDeleted: false }, {}, {})
-        if (existingPurchase) return res.status(400).json(new apiResponse(400, "Workshop already purchased", {}, {}))
+        const existingPurchase = await getFirstMatch(workshopPaymentModel, { workshopId: new ObjectId(value.workshopId), userId: new ObjectId(userId), isDeleted: false }, {}, {})
+        if (existingPurchase) return res.status(200).json(new apiResponse(200, "Workshop already purchased", existingPurchase, {}))
 
         const purchaseData = {
             workshopId: new ObjectId(value.workshopId),

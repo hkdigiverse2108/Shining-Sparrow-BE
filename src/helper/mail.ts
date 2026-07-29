@@ -3,7 +3,9 @@
 import nodemailer from 'nodemailer';
 import { config } from '../../config';
 
-let mail: any = config.MAIL
+let mail: any = config.MAIL;
+const senderName = "Shining Sparrow";
+const fromSender = `"${senderName}" <${mail}>`;
 
 const option: any = {
     host: 'smtp.gmail.com',
@@ -20,9 +22,11 @@ export const email_verification_mail = async (user: any, otp: any) => {
     return new Promise(async (resolve, reject) => {
         try {
             const mailOptions = {
-                from: mail,
+                from: fromSender,
+                replyTo: mail,
                 to: user.email,
                 subject: "Login OTP - Shining Sparrow",
+                text: `Hello,\n\nWe received a request to log in to your Shining Sparrow account. Use the verification code below to complete your access.\n\nYour OTP: ${otp}\n\nThis OTP is valid for 10 minutes.\n\nWarm Regards,\nTeam Shining Sparrow\nhttps://shiningsparrow.com`,
                 html: `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -132,7 +136,7 @@ export const email_verification_mail = async (user: any, otp: any) => {
                 <body>
                     <div class="container">
                         <div class="header">
-                            <img src="https://shiningsparrow.com/logo.png" alt="Shining Sparrow Logo" class="logo" onerror="this.style.display='none'">
+                            <img src="https://shiningsparrow.com/assets/images/logo/Logo.webp" alt="Shining Sparrow Logo" class="logo" onerror="this.style.display='none'">
                             <h2 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">Shining Sparrow</h2>
                         </div>
                         <div class="hero">
@@ -185,9 +189,11 @@ export const send_otr_mail = async (user: any, otr: any) => {
         try {
             console.log("send_otr_mail triggered for user:", { id: user?._id, email: user?.email, fullName: user?.fullName });
             const mailOptions = {
-                from: mail,
+                from: fromSender,
+                replyTo: mail,
                 to: user.email,
                 subject: "Welcome to Shining Sparrow - Your OTR Code",
+                text: `Hi ${user.fullName || 'Learner'},\n\nThank you for registering at Shining Sparrow. Your registration has been successfully completed.\n\nPhone Number: ${user.phoneNumber}\nOTR Code: ${otr}\n\nPlease keep this OTR code safe. You will need it every time you log in to the classroom dashboard.\n\nClassroom Access: https://student.shiningsparrow.com/login\n\nWarm Regards,\nTeam Shining Sparrow\nhttps://shiningsparrow.com`,
                 html: `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -342,7 +348,7 @@ export const send_otr_mail = async (user: any, otr: any) => {
                                 </div>
                             </div>
                             
-                            <a href="http://localhost:3000/login" target="_blank" class="btn-primary">Enter Classroom</a>
+                            <a href="https://student.shiningsparrow.com/login" target="_blank" class="btn-primary">Enter Classroom</a>
                             
                             <p class="warning-text">
                                 * Please keep this OTR (One Time Registration) code safe. You will need it every time you log in to the classroom dashboard.
@@ -383,9 +389,11 @@ export const send_forgot_otr_mail = async (user: any, otr: any) => {
     return new Promise(async (resolve, reject) => {
         try {
             const mailOptions = {
-                from: mail,
+                from: fromSender,
+                replyTo: mail,
                 to: user.email,
                 subject: "Retrieve Your OTR Code - Shining Sparrow",
+                text: `Hi ${user.fullName || 'Learner'},\n\nWe received a request to retrieve your OTR (One Time Registration) code.\n\nPhone Number: ${user.phoneNumber}\nOTR Code: ${otr}\n\nGo to Login: https://student.shiningsparrow.com/login\n\nWarm Regards,\nTeam Shining Sparrow\nhttps://shiningsparrow.com`,
                 html: `
                 <!DOCTYPE html>
                 <html lang="en">
@@ -540,7 +548,7 @@ export const send_forgot_otr_mail = async (user: any, otr: any) => {
                                 </div>
                             </div>
                             
-                            <a href="http://localhost:3000/login" target="_blank" class="btn-primary">Go to Login</a>
+                            <a href="https://student.shiningsparrow.com/login" target="_blank" class="btn-primary">Go to Login</a>
                             
                             <p class="warning-text">
                                 * If you did not make this request, you can safely ignore this email or reach out to support if you have concerns.
@@ -600,9 +608,11 @@ export const send_newsletter = async (email: string, subject: string, htmlMessag
             `;
 
             const mailOptions = {
-                from: mail,
+                from: fromSender,
+                replyTo: mail,
                 to: email,
                 subject: subject,
+                text: htmlMessage.replace(/<[^>]*>/g, ''),
                 html: htmlContent,
             };
 

@@ -60,5 +60,7 @@ export const purchaseCourseSchema = Joi.object().keys({
     couponCodeId: Joi.string().allow('', null).optional(),
     discountAmount: Joi.number().default(0),
     finalAmount: Joi.number().optional(),
+    phoneNumber: Joi.string().allow('', null).optional(),
+    email: Joi.string().allow('', null).optional(),
 });
 
