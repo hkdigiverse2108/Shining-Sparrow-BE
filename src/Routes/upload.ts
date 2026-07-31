@@ -15,15 +15,19 @@ router.post("/", (req: any, res: any) => {
         const hasImages = req.files && req.files.images && req.files.images.length > 0;
         const hasPdfs = req.files && req.files.pdf && req.files.pdf.length > 0;
         const hasDocs = req.files && req.files.doc && req.files.doc.length > 0;
+        const hasAudio = req.files && req.files.audio && req.files.audio.length > 0;
 
         // At least one type must be uploaded
-        if (!hasImages && !hasPdfs && !hasDocs) {
+        if (!hasImages && !hasPdfs && !hasDocs && !hasAudio) {
             return res.status(400).json(new apiResponse(400, "No files uploaded", {}, {}));
         }
 
         const uploadedImages: string[] = [];
         const uploadedPdfs: string[] = [];
         const uploadedDocs: string[] = [];
+        const uploadedAudio: string[] = [];
+
+        const baseUrl = (config.BACKEND_URL || process.env.BACKEND_URL || 'https://api.shiningsparrow.com').replace(/\/$/, '');
 
         // MOVE IMAGES (if any)
         if (hasImages) {
@@ -42,7 +46,7 @@ router.post("/", (req: any, res: any) => {
             req.files.images.forEach((file: any) => {
                 const newPath = path.join(imageDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const imageUrl = `/images/${req.body.category}/${file.filename}`;
+                const imageUrl = `${baseUrl}/images/${req.body.category}/${file.filename}`;
                 uploadedImages.push(imageUrl);
             });
         }
@@ -57,7 +61,7 @@ router.post("/", (req: any, res: any) => {
             req.files.pdf.forEach((file: any) => {
                 const newPath = path.join(pdfDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const pdfUrl = `/pdf/${file.filename}`;
+                const pdfUrl = `${baseUrl}/pdf/${file.filename}`;
                 uploadedPdfs.push(pdfUrl);
             });
         }
@@ -72,12 +76,27 @@ router.post("/", (req: any, res: any) => {
             req.files.doc.forEach((file: any) => {
                 const newPath = path.join(docDir, file.filename);
                 fs.renameSync(file.path, newPath);
-                const docUrl = `/docs/${file.filename}`;
+                const docUrl = `${baseUrl}/docs/${file.filename}`;
                 uploadedDocs.push(docUrl);
             });
         }
 
-        return res.status(200).json(new apiResponse(200, "Files uploaded successfully", { images: uploadedImages, pdfs: uploadedPdfs, docs: uploadedDocs }, {}));
+        // MOVE AUDIO (if any)
+        if (hasAudio) {
+            const audioDir = path.join(process.cwd(), "audio");
+            if (!fs.existsSync(audioDir)) {
+                fs.mkdirSync(audioDir, { recursive: true });
+            }
+
+            req.files.audio.forEach((file: any) => {
+                const newPath = path.join(audioDir, file.filename);
+                fs.renameSync(file.path, newPath);
+                const audioUrl = `${baseUrl}/audio/${file.filename}`;
+                uploadedAudio.push(audioUrl);
+            });
+        }
+
+        return res.status(200).json(new apiResponse(200, "Files uploaded successfully", { images: uploadedImages, pdfs: uploadedPdfs, docs: uploadedDocs, audio: uploadedAudio }, {}));
 
     } catch (error) {
         console.log(error);
@@ -153,6 +172,23 @@ router.delete("/", (req: any, res: any) => {
             return res.status(200).json(new apiResponse(200, "Doc deleted successfully", {}, {}));
         }
 
+        if (type === "audio") {
+            const filename = pathParts[1];
+
+            if (!filename) {
+                return res.status(400).json(new apiResponse(400, "Invalid audio URL", {}, {}));
+            }
+
+            const audioPath = path.join(process.cwd(), "audio", filename);
+
+            if (!fs.existsSync(audioPath)) {
+                return res.status(404).json(new apiResponse(404, "Audio not found", {}, {}));
+            }
+
+            fs.unlinkSync(audioPath);
+            return res.status(200).json(new apiResponse(200, "Audio deleted successfully", {}, {}));
+        }
+
         return res.status(400).json(new apiResponse(400, "Unsupported file type in URL", {}, {}));
     } catch (error) {
         console.log(error);
@@ -163,6 +199,7 @@ router.delete("/", (req: any, res: any) => {
 router.get("/images/:category", (req, res) => {
     reqInfo(req)
     const { category } = req.params;
+    const baseUrl = (config.BACKEND_URL || process.env.BACKEND_URL || 'https://api.shiningsparrow.com').replace(/\/$/, '');
     try {
         if (!Object.values(MEDIA_CATEGORY).includes(category)) {
             return res.status(400).json(new apiResponse(400, "Invalid MediaCategory", {}, {}));
@@ -173,7 +210,7 @@ router.get("/images/:category", (req, res) => {
             return res.status(200).json(new apiResponse(200, "No images found", [], {}));
         }
         const images = fs.readdirSync(dir).map(
-            (file) => `/images/${category}/${file}`
+            (file) => `${baseUrl}/images/${category}/${file}`
         );
         return res.status(200).json(new apiResponse(200, "Images fetched successfully", images, {}));
     } catch (error) {
@@ -184,6 +221,7 @@ router.get("/images/:category", (req, res) => {
 
 router.get("/pdf", (req, res) => {
     reqInfo(req)
+    const baseUrl = (config.BACKEND_URL || process.env.BACKEND_URL || 'https://api.shiningsparrow.com').replace(/\/$/, '');
     try {
         const dir = path.join('pdf');
 
@@ -191,7 +229,7 @@ router.get("/pdf", (req, res) => {
             return res.status(200).json(new apiResponse(200, "No pdf found", [], {}));
         }
         const images = fs.readdirSync(dir).map(
-            (file) => `/pdf/${file}`
+            (file) => `${baseUrl}/pdf/${file}`
         );
         return res.status(200).json(new apiResponse(200, "PDF fetched successfully", images, {}));
     } catch (error) {

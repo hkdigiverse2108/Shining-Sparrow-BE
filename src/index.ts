@@ -22,9 +22,10 @@ const ObjectId = require('mongoose').Types.ObjectId;
 
 const app = express();
 app.use(cors());
-app.use("/images", express.static(path.join(__dirname, "..", "..", "images")));
-app.use("/pdf", express.static(path.join(__dirname, "..", "..", "pdf")));
-app.use("/docs", express.static(path.join(__dirname, "..", "..", "docs")));
+app.use("/images", express.static(path.join(process.cwd(), "images")));
+app.use("/pdf", express.static(path.join(process.cwd(), "pdf")));
+app.use("/docs", express.static(path.join(process.cwd(), "docs")));
+app.use("/audio", express.static(path.join(process.cwd(), "audio")));
 
 const fileStorage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -49,7 +50,8 @@ const fileFilter = (req, file, cb) => {
         file.mimetype === "image/jpeg" ||
         file.mimetype === 'application/pdf' ||
         file.mimetype === 'application/msword' ||
-        file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        file.mimetype.startsWith('audio/')
     ) {
         cb(null, true);
     } else {
@@ -59,7 +61,7 @@ const fileFilter = (req, file, cb) => {
 
 
 app.use(mongooseConnection);
-app.use(multer({ storage: fileStorage, fileFilter }).fields([{ name: "images", maxCount: 100 }, { name: 'pdf', maxCount: 100 }, { name: 'doc', maxCount: 100 }]));
+app.use(multer({ storage: fileStorage, fileFilter }).fields([{ name: "images", maxCount: 100 }, { name: 'pdf', maxCount: 100 }, { name: 'doc', maxCount: 100 }, { name: 'audio', maxCount: 100 }]));
 app.use(bodyParser.json({ limit: "200mb" }));
 app.use(bodyParser.urlencoded({ limit: "200mb", extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
