@@ -246,7 +246,7 @@ export const get_my_workshops = async (req, res) => {
     reqInfo(req)
     let { user } = req.headers, { page, limit } = req.query, criteria: any = { isDeleted: false }, options: any = { lean: true }
     try {
-        if (user.role === USER_ROLES.USER) {
+        if (user?.role === USER_ROLES.USER) {
             criteria.userId = new ObjectId(user._id)
         } else if (req.query.userId) {
             criteria.userId = new ObjectId(req.query.userId)
