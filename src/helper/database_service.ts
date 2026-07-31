@@ -60,5 +60,5 @@ export const findAllWithPopulate = async (modelName, criteria, projection, optio
 
 export const findAllWithPopulateWithSorting = async (modelName, criteria, projection, options, populateModel) => {
     options.lean = true;
-    return modelName.find(criteria, projection, options).collation({locale: "en"}).populate(populateModel);
+    return modelName.find(criteria, projection, options).populate(populateModel);
 }
