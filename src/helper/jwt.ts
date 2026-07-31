@@ -105,7 +105,7 @@ export const userJWTOptional = async (req: Request, res: Response, next) => {
                 req.headers.user = result;
             }
         } catch (err) {
-            // Ignore error for optional JWT routes
+            console.log('err => ',err);
         }
     }
     return next();

@@ -102,7 +102,7 @@ export const get_all_workshop = async (req, res) => {
             { path: 'workshopTestimonials', select: 'name designation rate description image' }
         ]
 
-        const workshops = await findAllWithPopulateWithSorting(workshopModel, criteria, {}, options, populateModel)
+        const workshops = await findAllWithPopulate(workshopModel, criteria, {}, options, populateModel)
         const totalCount = await countData(workshopModel, criteria)
 
         const unlockedSet = new Set(
@@ -112,11 +112,11 @@ export const get_all_workshop = async (req, res) => {
         let newResponse: any[] = [];
 
         for (let workshop of workshops) {
-            const totalLesson = await countData(workshopCurriculumModel, { workshopId: workshop._id, isDeleted: false });
+            const totalLesson = Array.isArray(workshop.workshopCurriculum) ? workshop.workshopCurriculum.length : 0;
             newResponse.push({
                 ...workshop,
                 totalLesson,
-                isUnlocked: unlockedSet.has(workshop?._id.toString()),
+                isUnlocked: unlockedSet.has(workshop?._id?.toString()),
             });
         }
 
