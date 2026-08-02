@@ -70,6 +70,10 @@ export const userJWT = async (req: Request, res: Response, next) => {
             let isVerifyToken = jwt.verify(token, jwt_token_secret)
             result = await userModel.findOne({ _id: new ObjectId(isVerifyToken._id), isDeleted: false }).lean()
             if (result?.isBlocked == true) return res.status(410).json(new apiResponse(410, responseMessage?.accountBlock, {}, {}));
+            // Check single device session token (if not admin)
+            if (result?.role !== 'admin' && result?.currentToken && result.currentToken !== token) {
+                return res.status(401).json(new apiResponse(401, "Session expired. You have been logged in from another device.", {}, {}));
+            }
             if (result?.isDeleted == false) {
                 req.headers.user = result
                 return next()

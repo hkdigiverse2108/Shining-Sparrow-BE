@@ -11,6 +11,8 @@ router.delete('/delete/:id', adminJWT, courseController.delete_course_by_id);
 router.post('/purchase', userJWTOptional, courseController.purchase_course);
 router.get('/my-courses', userJWT, courseController.get_my_courses);
 router.get('/all', userJWTOptional, courseController.get_all_course);
+router.put('/payment/block-unblock', adminJWT, courseController.block_unblock_course_payment);
+router.delete('/payment/delete/:id', adminJWT, courseController.delete_course_payment);
 router.get('/:id', userJWTOptional, courseController.get_course_by_id);
 
 export const courseRoute = router;

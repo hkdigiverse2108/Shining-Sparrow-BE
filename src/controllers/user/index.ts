@@ -1,8 +1,7 @@
 import { apiResponse, generateHash, generateToken, getUniqueOtr, USER_ROLES } from "../../common";
-import { userAccountDeletionModel, userModel, userCourseModel, workshopPaymentModel } from "../../database";
+import { userAccountDeletionModel, userModel, userCourseModel, workshopPaymentModel, userLessonCompletionModel, userWorkshopCurriculumCompletionModel, courseModel, workshopModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData, send_otr_mail } from "../../helper";
 import { addUserSchema, editUserSchema, deleteUserSchema, getUserSchema, purchaseIntentSchema } from "../../validation";
-import bcryptjs from 'bcryptjs'
 
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -22,6 +21,48 @@ export const add_user = async (req, res) => {
         value.password = await generateHash(value.password)
         const response = await createData(userModel, value);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
+
+        // Create user_course and workshop-payment entries for assigned courseIds and workshopIds with program price
+        if (value.courseIds && Array.isArray(value.courseIds)) {
+            for (const cId of value.courseIds) {
+                const existing = await getFirstMatch(userCourseModel, { userId: response._id, courseId: new ObjectId(cId) }, {}, {});
+                if (!existing) {
+                    const courseItem = await getFirstMatch(courseModel, { _id: new ObjectId(cId) }, {}, {});
+                    const progPrice = courseItem?.price || 0;
+                    await createData(userCourseModel, {
+                        userId: response._id,
+                        courseId: new ObjectId(cId),
+                        paymentStatus: 'completed',
+                        paymentMethod: 'admin_assigned',
+                        accessStartDate: new Date(),
+                        finalAmount: progPrice
+                    });
+                } else if (existing.isDeleted) {
+                    await updateData(userCourseModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
+                }
+            }
+        }
+
+        if (value.workshopIds && Array.isArray(value.workshopIds)) {
+            for (const wId of value.workshopIds) {
+                const existing = await getFirstMatch(workshopPaymentModel, { userId: response._id, workshopId: new ObjectId(wId) }, {}, {});
+                if (!existing) {
+                    const workshopItem = await getFirstMatch(workshopModel, { _id: new ObjectId(wId) }, {}, {});
+                    const progPrice = workshopItem?.price || 0;
+                    await createData(workshopPaymentModel, {
+                        userId: response._id,
+                        workshopId: new ObjectId(wId),
+                        paymentStatus: 'completed',
+                        paymentMethod: 'admin_assigned',
+                        transactionDate: new Date(),
+                        amount: progPrice,
+                        finalAmount: progPrice
+                    });
+                } else if (existing.isDeleted) {
+                    await updateData(workshopPaymentModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
+                }
+            }
+        }
 
         try {
             await send_otr_mail(response, value.otr);
@@ -68,6 +109,8 @@ export const user_signup = async (req, res) => {
             generatedOn: (new Date().getTime())
         }, { expiresIn: '365d' })
 
+        await updateData(userModel, { _id: new ObjectId(response._id) }, { currentToken: token }, {});
+
         let newResponse = { ...response?._doc ? response?._doc : response, token }
 
         return res.status(200).json(new apiResponse(200, "Signup successfully", newResponse, {}))
@@ -86,8 +129,77 @@ export const edit_user_by_id = async (req, res) => {
         let existingUser = await getFirstMatch(userModel, { email: value.email, role: USER_ROLES.USER, _id: { $ne: new ObjectId(value.userId) }, isDeleted: false }, {}, {})
         if (existingUser) return res.status(400).json(new apiResponse(400, responseMessage?.dataAlreadyExist("Email"), {}, {}))
 
-        const response = await updateData(userModel, { _id: new ObjectId(value.userId), isDeleted: false }, value, {})
+        const userIdObj = new ObjectId(value.userId);
+        const response = await updateData(userModel, { _id: userIdObj, isDeleted: false }, value, {})
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.updateDataError("user"), {}, {}))
+
+        // Handle courseIds sync if passed
+        if (value.courseIds && Array.isArray(value.courseIds)) {
+            const newCourseIdsStr = value.courseIds.map((id: string) => id.toString());
+            // 1. Ensure active user_course records for newly added courseIds
+            for (const cId of value.courseIds) {
+                const existing = await getFirstMatch(userCourseModel, { userId: userIdObj, courseId: new ObjectId(cId) }, {}, {});
+                if (!existing) {
+                    const courseItem = await getFirstMatch(courseModel, { _id: new ObjectId(cId) }, {}, {});
+                    const progPrice = courseItem?.price || 0;
+                    await createData(userCourseModel, {
+                        userId: userIdObj,
+                        courseId: new ObjectId(cId),
+                        paymentStatus: 'completed',
+                        paymentMethod: 'admin_assigned',
+                        accessStartDate: new Date(),
+                        finalAmount: progPrice
+                    });
+                } else if (existing.isDeleted) {
+                    await updateData(userCourseModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
+                }
+            }
+
+            // 2. Remove/soft-delete courses that were removed in edit and clear completions
+            const userCourses = await userCourseModel.find({ userId: userIdObj, isDeleted: false });
+            for (const uc of userCourses) {
+                if (!newCourseIdsStr.includes(uc.courseId.toString())) {
+                    await updateData(userCourseModel, { _id: uc._id }, { isDeleted: true }, {});
+                    // Reset completion history for deleted course access
+                    await userLessonCompletionModel.deleteMany({ userId: userIdObj, courseId: uc.courseId });
+                }
+            }
+        }
+
+        // Handle workshopIds sync if passed
+        if (value.workshopIds && Array.isArray(value.workshopIds)) {
+            const newWorkshopIdsStr = value.workshopIds.map((id: string) => id.toString());
+            // 1. Ensure active workshop_payment records for newly added workshopIds
+            for (const wId of value.workshopIds) {
+                const existing = await getFirstMatch(workshopPaymentModel, { userId: userIdObj, workshopId: new ObjectId(wId) }, {}, {});
+                if (!existing) {
+                    const workshopItem = await getFirstMatch(workshopModel, { _id: new ObjectId(wId) }, {}, {});
+                    const progPrice = workshopItem?.price || 0;
+                    await createData(workshopPaymentModel, {
+                        userId: userIdObj,
+                        workshopId: new ObjectId(wId),
+                        paymentStatus: 'completed',
+                        paymentMethod: 'admin_assigned',
+                        transactionDate: new Date(),
+                        amount: progPrice,
+                        finalAmount: progPrice
+                    });
+                } else if (existing.isDeleted) {
+                    await updateData(workshopPaymentModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
+                }
+            }
+
+            // 2. Remove/soft-delete workshops that were removed in edit and clear completions
+            const userWorkshops = await workshopPaymentModel.find({ userId: userIdObj, isDeleted: false });
+            for (const uw of userWorkshops) {
+                if (!newWorkshopIdsStr.includes(uw.workshopId.toString())) {
+                    await updateData(workshopPaymentModel, { _id: uw._id }, { isDeleted: true }, {});
+                    // Reset completion history for deleted workshop access
+                    await userWorkshopCurriculumCompletionModel.deleteMany({ userId: userIdObj, workshopId: uw.workshopId });
+                }
+            }
+        }
+
         return res.status(200).json(new apiResponse(200, responseMessage?.updateDataSuccess("user"), response, {}))
     } catch (error) {
         console.log(error)
@@ -355,6 +467,8 @@ export const check_purchase_intent = async (req, res) => {
                 generatedOn: (new Date().getTime())
             }, { expiresIn: '365d' });
 
+            await updateData(userModel, { _id: new ObjectId(user._id) }, { currentToken: token }, {});
+
             const result = { ...user?._doc ? user?._doc : user, token };
             return res.status(200).json(new apiResponse(200, "Welcome back! Proceeding to purchase...", result, {}));
 
@@ -395,6 +509,8 @@ export const check_purchase_intent = async (req, res) => {
                 status: "Login",
                 generatedOn: (new Date().getTime())
             }, { expiresIn: '365d' });
+
+            await updateData(userModel, { _id: new ObjectId(newUser._id) }, { currentToken: token }, {});
 
             const result = { ...newUser?._doc ? newUser?._doc : newUser, token };
             return res.status(200).json(new apiResponse(200, "Account registered successfully! Proceeding to purchase...", result, {}));

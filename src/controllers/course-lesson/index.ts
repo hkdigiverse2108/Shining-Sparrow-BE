@@ -329,12 +329,24 @@ export const get_course_lesson_by_id = async (req, res) => {
                 return res.status(403).json(new apiResponse(403, "You have not purchased this course.", {}, {}))
             }
 
+            // Check if course access is blocked
+            const blockedPurchases = await userCourseModel.find({
+                userId: new ObjectId(userId),
+                courseId: { $in: matchingCourses.map(id => new ObjectId(id)) },
+                isDeleted: false,
+                isBlocked: true
+            });
+            if (blockedPurchases.length > 0 && blockedPurchases.length === matchingCourses.length) {
+                return res.status(403).json(new apiResponse(403, "Your access to this course has been blocked by Admin.", {}, {}))
+            }
+
             // Check if access has expired for all matching course purchases
             const now = new Date();
             const activePurchases = await userCourseModel.find({
                 userId: new ObjectId(userId),
                 courseId: { $in: matchingCourses.map(id => new ObjectId(id)) },
                 isDeleted: false,
+                isBlocked: false,
                 $or: [
                     { accessExpiryDate: null },
                     { accessExpiryDate: { $exists: false } },
@@ -405,6 +417,9 @@ export const complete_lesson = async (req, res) => {
         const userCourse = await getFirstMatch(userCourseModel, { userId: new ObjectId(userId), courseId: new ObjectId(courseId), isDeleted: false }, {}, {});
         if (!userCourse) {
             return res.status(403).json(new apiResponse(403, "You do not have access to this course", {}, {}))
+        }
+        if (userCourse.isBlocked) {
+            return res.status(403).json(new apiResponse(403, "Your access to this course has been blocked by Admin.", {}, {}))
         }
 
         // Check if completion record already exists

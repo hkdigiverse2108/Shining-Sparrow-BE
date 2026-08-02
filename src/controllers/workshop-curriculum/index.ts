@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { workshopCurriculumModel, userWorkshopCurriculumCompletionModel } from "../../database";
+import { workshopCurriculumModel, userWorkshopCurriculumCompletionModel, workshopPaymentModel } from "../../database";
 import { countData, createData, findAllWithPopulate, getFirstMatch, reqInfo, responseMessage, updateData, getData } from "../../helper";
 import { addWorkshopCurriculumSchema, editWorkshopCurriculumSchema, deleteWorkshopCurriculumSchema, getWorkshopCurriculumSchema, completeWorkshopCurriculumSchema } from "../../validation";
 
@@ -59,6 +59,17 @@ export const get_all_workshop_curriculum = async (req, res) => {
 
         if (!isAdmin) {
             criteria.isBlocked = false;
+            if (user?._id && workshopFilter) {
+                const blockedPayment = await getFirstMatch(workshopPaymentModel, {
+                    userId: new ObjectId(user._id),
+                    workshopId: new ObjectId(workshopFilter),
+                    isDeleted: false,
+                    isBlocked: true
+                }, {}, {});
+                if (blockedPayment) {
+                    return res.status(403).json(new apiResponse(403, "Your access to this workshop has been blocked by Admin.", {}, {}));
+                }
+            }
         }
 
         if (search) {

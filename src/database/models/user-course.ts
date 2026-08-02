@@ -15,6 +15,7 @@ const userCourseSchema = new mongoose.Schema({
     finalAmount: { type: Number },
     couponCodeId: { type: mongoose.Schema.Types.ObjectId, ref: 'coupon_code', default: null },
     isDeleted: { type: Boolean, default: false },
+    isBlocked: { type: Boolean, default: false },
 }, { timestamps: true, versionKey: false });
 
 export const userCourseModel = mongoose.model('user_course', userCourseSchema);

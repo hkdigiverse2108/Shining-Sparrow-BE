@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { couponCodeModel, userModel, workshopCurriculumModel, workshopModel, workshopPaymentModel } from "../../database";
+import { couponCodeModel, userModel, workshopCurriculumModel, workshopModel, workshopPaymentModel, userWorkshopCurriculumCompletionModel } from "../../database";
 import { countData, createData, findAllWithPopulate, findAllWithPopulateWithSorting, findOneAndPopulate, getData, getFirstMatch, reqInfo, responseMessage, updateData, createDbNotification, createAdminNotification } from "../../helper";
 import { addWorkshopSchema, editWorkshopSchema, deleteWorkshopSchema, getWorkshopSchema, purchaseWorkshopSchema } from "../../validation";
 
@@ -214,7 +214,7 @@ export const purchase_workshop = async (req, res) => {
         const response = await createData(workshopPaymentModel, purchaseData);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
 
-        await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $push: { workshopIds: new ObjectId(response.workshopId) } }, { new: true, timestamps: false })
+        await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $addToSet: { workshopIds: new ObjectId(response.workshopId) } }, { new: true, timestamps: false })
 
         // Increment coupon code usedCount if a coupon was applied
         if (value.couponCodeId) {
@@ -293,5 +293,50 @@ export const get_my_workshops = async (req, res) => {
     } catch (error) {
         console.log(error)
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error))
+    }
+}
+
+export const block_unblock_workshop_payment = async (req, res) => {
+    reqInfo(req)
+    try {
+        const { id } = req.body;
+        if (!id) return res.status(400).json(new apiResponse(400, "Payment ID is required", {}, {}));
+
+        const existing = await getFirstMatch(workshopPaymentModel, { _id: new ObjectId(id) }, {}, {});
+        if (!existing) return res.status(404).json(new apiResponse(404, "Workshop payment record not found", {}, {}));
+
+        const newBlockedStatus = !existing.isBlocked;
+        const updated = await updateData(workshopPaymentModel, { _id: new ObjectId(id) }, { isBlocked: newBlockedStatus }, { new: true });
+
+        const msg = newBlockedStatus ? "Workshop payment blocked successfully" : "Workshop payment unblocked successfully";
+        return res.status(200).json(new apiResponse(200, msg, updated, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+}
+
+export const delete_workshop_payment = async (req, res) => {
+    reqInfo(req)
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json(new apiResponse(400, "Payment ID is required", {}, {}));
+
+        const existing = await getFirstMatch(workshopPaymentModel, { _id: new ObjectId(id), isDeleted: false }, {}, {});
+        if (!existing) return res.status(404).json(new apiResponse(404, "Workshop payment record not found", {}, {}));
+
+        // Soft delete the payment record
+        const updated = await updateData(workshopPaymentModel, { _id: new ObjectId(id) }, { isDeleted: true }, { new: true });
+
+        // Pull workshopId from userModel.workshopIds
+        await updateData(userModel, { _id: new ObjectId(existing.userId) }, { $pull: { workshopIds: new ObjectId(existing.workshopId) } }, {});
+
+        // Delete curriculum completions so progress resets to 0 if re-enrolled later
+        await userWorkshopCurriculumCompletionModel.deleteMany({ userId: new ObjectId(existing.userId), workshopId: new ObjectId(existing.workshopId) });
+
+        return res.status(200).json(new apiResponse(200, "Workshop payment deleted and progress reset successfully", updated, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
     }
 }

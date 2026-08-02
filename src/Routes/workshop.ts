@@ -10,6 +10,8 @@ router.delete('/delete/:id', adminJWT, workshopController.delete_workshop_by_id)
 router.get('/all', userJWTOptional, workshopController.get_all_workshop);
 router.get('/my-workshops', userJWT, workshopController.get_my_workshops);
 router.post('/purchase', userJWTOptional, workshopController.purchase_workshop);
+router.put('/payment/block-unblock', adminJWT, workshopController.block_unblock_workshop_payment);
+router.delete('/payment/delete/:id', adminJWT, workshopController.delete_workshop_payment);
 router.get('/:id', userJWTOptional, workshopController.get_workshop_by_id);
 
 export const workshopRoute = router;

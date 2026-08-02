@@ -285,7 +285,7 @@ export const purchase_course = async (req, res) => {
 
         const response = await createData(userCourseModel, purchaseData);
         if (!response) return res.status(404).json(new apiResponse(404, responseMessage?.addDataError, {}, {}))
-        await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $push: { courseIds: new ObjectId(response.courseId) } }, { new: true, timestamps: false })
+        await updateData(userModel, { _id: new ObjectId(response?.userId), isDeleted: false }, { $addToSet: { courseIds: new ObjectId(response.courseId) } }, { new: true, timestamps: false })
         await updateData(courseModel, { _id: new ObjectId(response.courseId), isDeleted: false }, { $inc: { enrolledLearners: 1 } }, {})
 
         // Increment coupon code usedCount if a coupon was applied
@@ -455,3 +455,48 @@ export const verifyPayment = async (req, res) => {
         return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, {}));
     }
 };
+
+export const block_unblock_course_payment = async (req, res) => {
+    reqInfo(req)
+    try {
+        const { id } = req.body;
+        if (!id) return res.status(400).json(new apiResponse(400, "Payment ID is required", {}, {}));
+
+        const existing = await getFirstMatch(userCourseModel, { _id: new ObjectId(id) }, {}, {});
+        if (!existing) return res.status(404).json(new apiResponse(404, "Course payment record not found", {}, {}));
+
+        const newBlockedStatus = !existing.isBlocked;
+        const updated = await updateData(userCourseModel, { _id: new ObjectId(id) }, { isBlocked: newBlockedStatus }, { new: true });
+
+        const msg = newBlockedStatus ? "Course payment blocked successfully" : "Course payment unblocked successfully";
+        return res.status(200).json(new apiResponse(200, msg, updated, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+}
+
+export const delete_course_payment = async (req, res) => {
+    reqInfo(req)
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json(new apiResponse(400, "Payment ID is required", {}, {}));
+
+        const existing = await getFirstMatch(userCourseModel, { _id: new ObjectId(id), isDeleted: false }, {}, {});
+        if (!existing) return res.status(404).json(new apiResponse(404, "Course payment record not found", {}, {}));
+
+        // Soft delete the payment record
+        const updated = await updateData(userCourseModel, { _id: new ObjectId(id) }, { isDeleted: true }, { new: true });
+
+        // Pull courseId from userModel.courseIds
+        await updateData(userModel, { _id: new ObjectId(existing.userId) }, { $pull: { courseIds: new ObjectId(existing.courseId) } }, {});
+
+        // Delete lesson completions so progress resets to 0 if re-enrolled later
+        await userLessonCompletionModel.deleteMany({ userId: new ObjectId(existing.userId), courseId: new ObjectId(existing.courseId) });
+
+        return res.status(200).json(new apiResponse(200, "Course payment deleted and progress reset successfully", updated, {}));
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage?.internalServerError, {}, error));
+    }
+}

@@ -25,6 +25,7 @@ const userSchema: any = new mongoose.Schema({
     courseIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'course' }],
     isDeleted: { type: Boolean, default: false },
     isBlocked: { type: Boolean, default: false },
+    currentToken: { type: String, default: null },
 }, { timestamps: true, versionKey: false })
 
 export const userModel = mongoose.model('user', userSchema);

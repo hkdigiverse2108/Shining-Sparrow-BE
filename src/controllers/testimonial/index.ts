@@ -1,5 +1,5 @@
 import { apiResponse, USER_ROLES } from "../../common";
-import { testimonialModel } from "../../database";
+import { courseModel, testimonialModel, workshopModel } from "../../database";
 import { aggregateData, countData, createData, findAllWithPopulate, getDataWithSorting, getFirstMatch, reqInfo, responseMessage, updateData } from "../../helper";
 import { addTestimonialSchema, editTestimonialSchema, deleteTestimonialSchema, getTestimonialSchema } from "../../validation";
 
@@ -164,10 +164,19 @@ export const get_all_testimonial = async (req, res) => {
             options.skip = (parseInt(page) - 1) * parseInt(limit)
             options.limit = parseInt(limit)
         }
-        let populateModel = [
-            { path: "learningCatalogId", }
-        ]
-        const response = await findAllWithPopulate(testimonialModel, criteria, {}, options, populateModel)
+        const rawResponse = await testimonialModel.find(criteria, {}, options);
+        const response = await Promise.all(rawResponse.map(async (doc: any) => {
+            const item = doc.toObject ? doc.toObject() : { ...doc };
+            if (item.learningCatalogId) {
+                if (item.type === 'course') {
+                    item.learningCatalogId = await courseModel.findById(item.learningCatalogId).select('name title').lean();
+                } else if (item.type === 'workshop') {
+                    item.learningCatalogId = await workshopModel.findById(item.learningCatalogId).select('title name').lean();
+                }
+            }
+            return item;
+        }));
+
         const totalCount = await countData(testimonialModel, criteria)
         const stateObj = {
             page: parseInt(page) || 1,
