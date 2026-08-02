@@ -15,6 +15,8 @@ export const addUserSchema = Joi.object().keys({
     agreeTerms: Joi.boolean().default(false),
     isEmailVerified: Joi.boolean().default(false),
     isBlocked: Joi.boolean().default(false),
+    courseIds: Joi.array().items(Joi.string().hex().length(24)).optional(),
+    workshopIds: Joi.array().items(Joi.string().hex().length(24)).optional(),
 });
 
 export const editUserSchema = Joi.object().keys({
@@ -33,6 +35,8 @@ export const editUserSchema = Joi.object().keys({
     agreeTerms: Joi.boolean().optional(),
     isEmailVerified: Joi.boolean().optional(),
     isBlocked: Joi.boolean().optional(),
+    courseIds: Joi.array().items(Joi.string().hex().length(24)).optional(),
+    workshopIds: Joi.array().items(Joi.string().hex().length(24)).optional(),
 });
 
 export const deleteUserSchema = Joi.object().keys({
