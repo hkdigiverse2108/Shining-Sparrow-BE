@@ -266,9 +266,9 @@ export const purchase_course = async (req, res) => {
             accessExpiryDate = new Date(accessStartDate.getTime() + course.accessDurationDays * 24 * 60 * 60 * 1000);
         }
 
-        const finalAmt = value.finalAmount || course.price;
-        const basePrice = course.price || 0;
-        const totalDiscount = Math.max(0, basePrice - finalAmt);
+        const origAmount = (course.mrpPrice && course.mrpPrice > 0) ? course.mrpPrice : (course.price || 0);
+        const finalAmt = value.finalAmount !== undefined ? value.finalAmount : (course.price !== undefined ? course.price : origAmount);
+        const totalDiscount = Math.max(0, origAmount - finalAmt);
 
         const purchaseData = {
             userId: new ObjectId(userId),
@@ -279,6 +279,7 @@ export const purchase_course = async (req, res) => {
             accessStartDate,
             accessExpiryDate,
             couponCodeId: value.couponCodeId ? new ObjectId(value.couponCodeId) : null,
+            amount: origAmount,
             discountAmount: totalDiscount,
             finalAmount: finalAmt,
         }

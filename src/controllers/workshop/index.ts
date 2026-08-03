@@ -197,17 +197,21 @@ export const purchase_workshop = async (req, res) => {
         const existingPurchase = await getFirstMatch(workshopPaymentModel, { workshopId: new ObjectId(value.workshopId), userId: new ObjectId(userId), isDeleted: false }, {}, {})
         if (existingPurchase) return res.status(200).json(new apiResponse(200, "Workshop already purchased", existingPurchase, {}))
 
+        const origAmount = (workshop.mrpPrice && workshop.mrpPrice > 0) ? workshop.mrpPrice : (workshop.price || 0);
+        const finalAmt = value.finalAmount !== undefined ? value.finalAmount : (value.amount !== undefined ? value.amount : (workshop.price || 0));
+        const totalDiscount = Math.max(0, origAmount - finalAmt);
+
         const purchaseData = {
             workshopId: new ObjectId(value.workshopId),
             userId: new ObjectId(userId),
-            amount: value.amount || workshop.price,
+            amount: origAmount,
             paymentStatus: value.paymentId ? 'completed' : 'pending',
             paymentId: value.paymentId,
             paymentMethod: value.paymentMethod,
             transactionDate: new Date(),
             receiptNumber: value.receiptNumber,
-            discountAmount: value.discountAmount || 0,
-            finalAmount: value.finalAmount || (value.amount || workshop.price),
+            discountAmount: totalDiscount,
+            finalAmount: finalAmt,
             couponCodeId: value.couponCodeId ? new ObjectId(value.couponCodeId) : null,
         }
 

@@ -89,7 +89,9 @@ export const otp_verification = async (req, res) => {
                 generatedOn: (new Date().getTime())
             }, expiresIn)
 
-            await updateData(userModel, { _id: new ObjectId(response._id) }, { currentToken: token }, {})
+            if (response.role === USER_ROLES.USER) {
+                await updateData(userModel, { _id: new ObjectId(response._id) }, { currentToken: token }, {})
+            }
 
             const result = {
                 isEmailVerified: response?.isEmailVerified,
@@ -165,7 +167,9 @@ export const login = async (req: Request, res: Response) => { //email or passwor
             generatedOn: (new Date().getTime())
         }, { expiresIn: '365d' })
 
-        await updateData(userModel, { _id: new ObjectId(response._id) }, { currentToken: token }, {})
+        if (response.role === USER_ROLES.USER) {
+            await updateData(userModel, { _id: new ObjectId(response._id) }, { currentToken: token }, {})
+        }
 
         // Log admin login history
         if (value.userType === USER_ROLES.ADMIN) {

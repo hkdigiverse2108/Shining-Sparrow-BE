@@ -28,14 +28,18 @@ export const add_user = async (req, res) => {
                 const existing = await getFirstMatch(userCourseModel, { userId: response._id, courseId: new ObjectId(cId) }, {}, {});
                 if (!existing) {
                     const courseItem = await getFirstMatch(courseModel, { _id: new ObjectId(cId) }, {}, {});
-                    const progPrice = courseItem?.price || 0;
+                    const progSellingPrice = courseItem?.price || 0;
+                    const origAmount = (courseItem?.mrpPrice && courseItem.mrpPrice > 0) ? courseItem.mrpPrice : progSellingPrice;
+                    const totalDiscount = Math.max(0, origAmount - progSellingPrice);
                     await createData(userCourseModel, {
                         userId: response._id,
                         courseId: new ObjectId(cId),
                         paymentStatus: 'completed',
                         paymentMethod: 'admin_assigned',
                         accessStartDate: new Date(),
-                        finalAmount: progPrice
+                        amount: origAmount,
+                        discountAmount: totalDiscount,
+                        finalAmount: progSellingPrice
                     });
                 } else if (existing.isDeleted) {
                     await updateData(userCourseModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
@@ -48,15 +52,18 @@ export const add_user = async (req, res) => {
                 const existing = await getFirstMatch(workshopPaymentModel, { userId: response._id, workshopId: new ObjectId(wId) }, {}, {});
                 if (!existing) {
                     const workshopItem = await getFirstMatch(workshopModel, { _id: new ObjectId(wId) }, {}, {});
-                    const progPrice = workshopItem?.price || 0;
+                    const progSellingPrice = workshopItem?.price || 0;
+                    const origAmount = (workshopItem?.mrpPrice && workshopItem.mrpPrice > 0) ? workshopItem.mrpPrice : progSellingPrice;
+                    const totalDiscount = Math.max(0, origAmount - progSellingPrice);
                     await createData(workshopPaymentModel, {
                         userId: response._id,
                         workshopId: new ObjectId(wId),
                         paymentStatus: 'completed',
                         paymentMethod: 'admin_assigned',
                         transactionDate: new Date(),
-                        amount: progPrice,
-                        finalAmount: progPrice
+                        amount: origAmount,
+                        discountAmount: totalDiscount,
+                        finalAmount: progSellingPrice
                     });
                 } else if (existing.isDeleted) {
                     await updateData(workshopPaymentModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
@@ -141,14 +148,18 @@ export const edit_user_by_id = async (req, res) => {
                 const existing = await getFirstMatch(userCourseModel, { userId: userIdObj, courseId: new ObjectId(cId) }, {}, {});
                 if (!existing) {
                     const courseItem = await getFirstMatch(courseModel, { _id: new ObjectId(cId) }, {}, {});
-                    const progPrice = courseItem?.price || 0;
+                    const progSellingPrice = courseItem?.price || 0;
+                    const origAmount = (courseItem?.mrpPrice && courseItem.mrpPrice > 0) ? courseItem.mrpPrice : progSellingPrice;
+                    const totalDiscount = Math.max(0, origAmount - progSellingPrice);
                     await createData(userCourseModel, {
                         userId: userIdObj,
                         courseId: new ObjectId(cId),
                         paymentStatus: 'completed',
                         paymentMethod: 'admin_assigned',
                         accessStartDate: new Date(),
-                        finalAmount: progPrice
+                        amount: origAmount,
+                        discountAmount: totalDiscount,
+                        finalAmount: progSellingPrice
                     });
                 } else if (existing.isDeleted) {
                     await updateData(userCourseModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
@@ -174,15 +185,18 @@ export const edit_user_by_id = async (req, res) => {
                 const existing = await getFirstMatch(workshopPaymentModel, { userId: userIdObj, workshopId: new ObjectId(wId) }, {}, {});
                 if (!existing) {
                     const workshopItem = await getFirstMatch(workshopModel, { _id: new ObjectId(wId) }, {}, {});
-                    const progPrice = workshopItem?.price || 0;
+                    const progSellingPrice = workshopItem?.price || 0;
+                    const origAmount = (workshopItem?.mrpPrice && workshopItem.mrpPrice > 0) ? workshopItem.mrpPrice : progSellingPrice;
+                    const totalDiscount = Math.max(0, origAmount - progSellingPrice);
                     await createData(workshopPaymentModel, {
                         userId: userIdObj,
                         workshopId: new ObjectId(wId),
                         paymentStatus: 'completed',
                         paymentMethod: 'admin_assigned',
                         transactionDate: new Date(),
-                        amount: progPrice,
-                        finalAmount: progPrice
+                        amount: origAmount,
+                        discountAmount: totalDiscount,
+                        finalAmount: progSellingPrice
                     });
                 } else if (existing.isDeleted) {
                     await updateData(workshopPaymentModel, { _id: existing._id }, { isDeleted: false, isBlocked: false, paymentStatus: 'completed' }, {});
