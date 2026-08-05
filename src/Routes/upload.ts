@@ -219,6 +219,24 @@ router.get("/images/:category", (req, res) => {
     }
 });
 
+// Serve individual image files (fallback for when nginx blocks static files)
+router.get("/images/:category/:filename", (req, res) => {
+    const { category, filename } = req.params;
+    try {
+        if (!Object.values(MEDIA_CATEGORY).includes(category)) {
+            return res.status(400).json(new apiResponse(400, "Invalid MediaCategory", {}, {}));
+        }
+        const filePath = path.join(process.cwd(), "images", category, filename);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json(new apiResponse(404, "Image not found", {}, {}));
+        }
+        res.sendFile(filePath);
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json(new apiResponse(500, responseMessage.internalServerError, {}, {}));
+    }
+});
+
 router.get("/pdf", (req, res) => {
     reqInfo(req)
     const baseUrl = (config.BACKEND_URL || process.env.BACKEND_URL || 'https://api.shiningsparrow.com').replace(/\/$/, '');
